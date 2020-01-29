@@ -1,14 +1,16 @@
-# TuningMetrics
- Repository containing several tuning curve metrics.
+# ZETA
+Repository containing ZETA functions and dependencies
  
-The metrics included here address the following issues: 
-1) Detection of cells that show a non-trivial modulation by a stimulus, in the sense that their temporal pattern of activity may be reliable, but their average firing rate is no different during the presence or absence of a stimulus. (getZeta.m)
-2) A parameter-free, information-based metric of stimulus tuning that is more sensitive than common metrics such as (1 – circular variance), or the orientation selectivity index. (getDeltaPrime.m)
-3) A parameter-free smoothness-based metric for quantifying tuning bandwidth/sparseness. (getTuningRho.m)
+This repository contains four main functions
+1) getZeta.m: Calculates the Zenith of Event-based Time-locked Anomalies (ZETA) for spike times of a single neuron.
+2) getTraceZeta.m: Calculates ZETA for trace-based data, such as a calcium imaging's dF/F0 or a patch-recording's membrane voltage.
+3) getMultiScaleDeriv.m: Calculates multi-scale derivatives for trace-based data, such as spike-time/z-score combinations that underlie ZETA.
+4) getMultiScaleSpikeDeriv.m: Wrapper function for getMultiScaleDeriv.m when the data is spike times and event times.
 
 Rationale for ZETA
 
-The validity of neurophysiological studies depends on a reliable quantification of whether and when a neuron responds to stimulation, be it sensory, optogenetically or otherwise. However, current statistical analysis methods to determine a neuron’s responsiveness are often labour-intensive and/or only detect classically mean-rate modulated cells. This problem is becoming more acute with the recent advent of techniques that yield increasingly large numbers of cells, such as multi-plane calcium imaging and Neuropixels recordings. Here, we present a procedure, ZETA (Zenith of Event-based Time-locked Anomalies), that consistently and robustly outperforms common approaches, in the sense that it includes more cells at a similar false-positive rate. Moreover, our procedure automatically includes otherwise undetectable non-trivial responses from a variety of brain regions and recording techniques. This includes, among others, retinal ganglion cell spiking responses to light flashes and calcium imaging in primary visual cortex with natural movies. 
+The validity of neurophysiological studies depends on a reliable quantification of wheth-er and when a neuron responds to stimulation, be it sensory, optogenetically or other-wise. However, current statistical analysis methods to determine a neuron’s respon-siveness are often labour-intensive and/or only detect classically mean-rate modulated cells. This problem is becoming more acute with the recent advent of techniques that yield increasingly large numbers of cells, such as multi-plane calcium imaging and Neu-ropixels recordings. Moreover, using peristimulus time histograms (PSTHs) to determine a neuron’s responsiveness still requires an a priori selection of an appropriate bin size, which can be heterogeneous over neurons. The procedure presented here, ZETA (Zen-ith of Event-based Time-locked Anomalies), consistently and robustly outperforms common approaches for quantifying neuronal responsiveness, in the sense that it includes more cells at a similar false-positive rate. This effect holds in both artificially generated benchmarking datasets with known ground truths, as well as in experimentally recorded electrophysiological data (see /ZETA/benchmarks/). Our procedure automatically includes otherwise undetectable non-trivially modulated neurons from a variety of brain regions and recording techniques, including Neuropixels recordings in mouse visual cortex and subcortical area SC (superior colliculus), as well as retinal ganglion cell spiking responses to light flashes recorded with multielectrode arrays, and GCaMP6f imaging in primary visual cortex with natural movies and drifting gratings. 
 
+Finally, ZETA’s timescale-, parameter- and binning-free nature allowed us to implement a ZETA-derived algorithm (using multi-scale derivatives) to calculate peak onset and offset latencies in neuronal spike trains with theoretically unlimited temporal resolution. 
 
-NOTE: Zeta is benchmarked, but these metrics are still work in progress, so all code is only provided as-is. Caveat emptor.
+Please send any questions or comments to j.montijn at nin.knaw.nl.
