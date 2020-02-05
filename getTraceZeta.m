@@ -4,17 +4,17 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%	input:
 	%	- vecTraceT [N x 1]: time (s) corresponding to entries in vecTraceAct
 	%	- vecTraceAct [N x 1]: activation trace (e.g., calcium imaging dF/F0)
-	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times
-	%	- dblUseMaxDur: float (s), ignore all values beyond this duration after stimulus onset
-	%								[default: median of trial start to trial start]
+	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate difference of on/off averages
+	%	- dblUseMaxDur: float (s), window length for calculating ZETA: ignore all values beyond this duration after event onset
+	%								[default: median of event onset to event onset]
 	%	- intResampNum: integer, number of resamplings (default: 50)
 	%	- intPlot: integer, plotting switch (0=none, 1=traces only, 2=activity heat map as well) (default: 0)
-	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (default: 4)
+	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (default: 3)
 	%	- boolVerbose: boolean, switch to print messages
 	%
 	%	output:
 	%	- dblZETA; Zenith of Event-based Time-locked Anomalies: FDR-corrected responsiveness z-score (i.e., >2 is significant)
-	%	- vecLatencies; different latency estimates, number if determined by intLatencyPeaks:
+	%	- vecLatencies; different latency estimates, number determined by intLatencyPeaks. If no peaks are detected, it returns NaNs:
 	%		1) Latency of ZETA
 	%		2) Latency of largest z-score with inverse sign to ZETA
 	%		3) Peak time of multi-scale derivatives
@@ -47,6 +47,8 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%	New procedure to determine statistical significance [by JM]
 	%2.0 - January 27 2020
 	%	New peak detection procedure using multi-scale derivatives [by JM]
+	%2.1 - February 5 2020
+	%	Minor changes and bug fixes [by JM]
 	
 	%% prep data
 	%ensure orientation
@@ -80,7 +82,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%get boolPlot
 	if ~exist('intLatencyPeaks','var') || isempty(intLatencyPeaks)
-		intLatencyPeaks = 2;
+		intLatencyPeaks = 3;
 	end
 	
 	%get boolVerbose
@@ -150,7 +152,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	if numel(vecZ) < 3
 		dblZETA = 0;
 		sZETA = struct;
-		warning([mfilename ':InsufficientSamples'],'Insufficient samples to calculate zeta');
+		warning([mfilename ':InsufficientSamples'],'Insufficient samples to calculate ZETA');
 		return
 	end
 	
@@ -286,11 +288,19 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		%get sustained peak onset
 		[vecPeakTime,vecPeakIdx,vecPeakDuration,vecPeakEnergy,vecSlope] = findsustainedpeaks(vecMSD,vecRefT,intLatencyPeaks);
 		%get MSD most prominent peak time
-		[vecVals,vecLocs,vecsWidth,vecProms]=findpeaks(vecMSD);
-		[dummy,intIdxMSD] = max(vecVals);
-		intPeakLocMSD = vecLocs(intIdxMSD);
-		dblPeakTimeMSD = vecTraceT(intPeakLocMSD);
-		
+		[vecValsPos,vecLocsPos,vecsWidthPos,vecPromsPos]=findpeaks(vecMSD);
+		[dblMaxPosVal,intPosIdxMSD] = max(vecValsPos);
+		[vecValsNeg,vecLocsNeg,vecsWidthNeg,vecPromsNeg]=findpeaks(-vecMSD);
+		[dblMaxNegVal,intNegIdxMSD] = max(vecValsNeg);
+		if abs(dblMaxPosVal) > abs(dblMaxNegVal)
+			intIdxMSD = intPosIdxMSD;
+			intPeakLocMSD = vecLocsPos(intIdxMSD);
+		else
+			intIdxMSD = intNegIdxMSD;
+			intPeakLocMSD = vecLocsNeg(intIdxMSD);
+		end
+		dblPeakTimeMSD = vecSpikeT(intPeakLocMSD);
+		%assign data
 		sMSD.intPeakLocMSD = intPeakLocMSD;
 		sMSD.dblPeakTimeMSD = dblPeakTimeMSD;
 		sMSD.vecTime = vecPeakTime;
@@ -326,6 +336,11 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		vecLatencies = [];
 	end
 		
+	%check number of latencies
+	if numel(vecLatencies) < intLatencyPeaks
+		vecLatencies(end+1:intLatencyPeaks) = nan;
+	end
+	
 	%% build optional output structure
 	if nargin > 1
 		sZETA = struct;

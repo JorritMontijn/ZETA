@@ -8,8 +8,8 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 	%Optional inputs:
 	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of bins) [default: 3]
 	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
-	%	- dblBase: critical value for locally dynamic derivative [default: 4]
-	%	- intPlot: integer, plotting switch (0=none, 1=plot)
+	%	- dblBase: base for exponential scale step size [default: 1.5]
+	%	- intPlot: integer, plotting switch (0=none, 1=plot) [default: 0]
 	%
 	%Outputs:
 	%	- vecMSD; Multi-scale derivative
