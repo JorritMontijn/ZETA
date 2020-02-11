@@ -27,7 +27,7 @@ function plotRaster(vecSpikes,vecTrialStarts,dblTrialDur,intPlotMaxSpikes)
 	end
 	
 	%get spike times in trials
-	[vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts);
+	[vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblTrialDur);
 	
 	%plot per trial
 	cla;

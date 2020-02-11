@@ -51,11 +51,13 @@ function [handleFill,handleLine] = errorfill(vecX,vecY,vecErr1,varargin)
 	%plot lines first to allow legend to show lines only
 	hold on
 	for intCurve = 1:size(vecX,2)
-		handleLine = plot(vecX(:,intCurve),vecY(:,intCurve),'-','LineWidth',2,'Color',vecColor(intCurve,:));
+		%vecFillColor = (vecColor(intCurve,:)+[1 1 1])/2; %non-alpha patch
+		vecFillColor = vecColor(intCurve,:);
+		handleFill = patch([vecX(:,intCurve);vecXinv(:,intCurve)],[vecY(:,intCurve)+vecErr1(:,intCurve,1);vecY(vecWindowInv,intCurve)-vecErr2(vecWindowInv,intCurve,end)],vecFillColor,'EdgeColor','none');
+		alpha(handleFill,.5);
 	end
 	for intCurve = 1:size(vecX,2)
-		handleFill = patch([vecX(:,intCurve);vecXinv(:,intCurve)],[vecY(:,intCurve)+vecErr1(:,intCurve,1);vecY(vecWindowInv,intCurve)-vecErr2(vecWindowInv,intCurve,end)],vecColor(intCurve,:),'EdgeColor','none');
-		alpha(handleFill,.5);
+		handleLine = plot(vecX(:,intCurve),vecY(:,intCurve),'-','LineWidth',2,'Color',vecColor(intCurve,:));
 	end
 	hold off
 	drawnow;

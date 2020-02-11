@@ -2,7 +2,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%getTraceZeta Calculates neuronal responsiveness index zeta for traces
 	%syntax: [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,varEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
 	%	input:
-	%	- vecTraceT [N x 1]: time (s) corresponding to entries in vecTraceAct
+	%	- vecTraceT [N x 1]: time (in seconds) corresponding to entries in vecTraceAct
 	%	- vecTraceAct [N x 1]: activation trace (e.g., calcium imaging dF/F0)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate difference of on/off averages
 	%	- dblUseMaxDur: float (s), window length for calculating ZETA: ignore all values beyond this duration after event onset
@@ -30,10 +30,16 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%		- vecRealDiff: real offset of spikes relative to uniform rate
 	%		- matRandDiff; matrix of shuffled runs with offset to uniform
 	%	- sMSD; structure with fields: (only if intLatencyPeaks > 0)
-	%		- vecMSD; Multi-scale derivative
+	%		- vecMSD; Multi-scale derivative provides high-resolution time-locked activation (like a PSTH)
 	%		- vecScale; timescales used to calculate derivatives
 	%		- matSmoothMSD; smoothed multi-scale derivatives matrix
 	%		- matMSD; raw multi-scale derivatives matrix
+	%		Data on the peak:
+	%		- dblPeakTime; time of peak (in seconds)
+	%		- dblPeakWidth; duration of peak (in seconds)
+	%		- vecPeakStartStop; start and stop time of peak (in seconds)
+	%		- intPeakLoc; index of peak (corresponding to sZETA.vecTraceT)
+	%		- vecPeakStartStopIdx; indices of peak start/stop (corresponding to sZETA.vecTraceT)
 	%		Additionally, it will return peak latencies using findsustainedpeaks.m:
 	%		- vecTime: latencies for activation
 	%		- vecIdx:  indices corresponding to peak locations in vecSpikeT/vecZ entries
@@ -49,6 +55,8 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%	New peak detection procedure using multi-scale derivatives [by JM]
 	%2.1 - February 5 2020
 	%	Minor changes and bug fixes [by JM]
+	%2.2 - February 11 2020
+	%	Peak width, analytical ZETA correction [by JM]
 	
 	%% prep data
 	%ensure orientation
@@ -160,8 +168,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	[dummy,intPeakLoc]= max(abs(vecZ));
 	dblMaxZTime = vecTraceT(intPeakLoc);
 	dblZ = vecZ(intPeakLoc);
-	dblCorrectionFactor = 2/3.5;
-	dblZETA = dblZ*dblCorrectionFactor;
+	dblZETA = (sqrt(2)/sqrt(pi)) + dblZ*(1 - (2/pi)); %apply correction factor for half-normal
 	dblP=1-(normcdf(abs(dblZETA))-normcdf(-abs(dblZETA)));
 	%find peak of inverse sign
 	[dummy,intPeakLocInvSign] = max(-sign(dblZ)*vecZ);
@@ -295,14 +302,36 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		if abs(dblMaxPosVal) > abs(dblMaxNegVal)
 			intIdxMSD = intPosIdxMSD;
 			intPeakLocMSD = vecLocsPos(intIdxMSD);
+			dblPeakPromMSD = vecPromsPos(intIdxMSD);
+			dblCutOff = vecMSD(intPeakLocMSD) - dblPeakPromMSD/2;
+			indPeakMembers = vecMSD > dblCutOff;
 		else
 			intIdxMSD = intNegIdxMSD;
 			intPeakLocMSD = vecLocsNeg(intIdxMSD);
+			dblPeakPromMSD = vecPromsNeg(intIdxMSD);
+			
+			dblCutOff = vecMSD(intPeakLocMSD) - dblPeakPromMSD/2;
+			indPeakMembers = vecMSD < dblCutOff;
 		end
+		%get potential starts/stops
+		vecPeakStarts = find(diff(indPeakMembers)==1);
+		vecPeakStops = find(diff(indPeakMembers)==-1);
+		if indPeakMembers(1) == 1,vecPeakStarts = [1 vecPeakStarts(:)'];end
+		if indPeakMembers(end) == 1,vecPeakStops = [vecPeakStops(:)' numel(indPeakMembers)];end
+		%find closest points
+		intPeakStart = intPeakLocMSD-min(intPeakLocMSD - vecPeakStarts(vecPeakStarts<intPeakLocMSD));
+		intPeakStop = intPeakLocMSD+min(vecPeakStops(vecPeakStops>intPeakLocMSD) - intPeakLocMSD);
+		dblPeakStartT = vecSpikeT(intPeakStart);
+		dblPeakStopT = vecSpikeT(intPeakStop);
+		dblPeakWidthMSD = dblPeakStopT-dblPeakStartT;
 		dblPeakTimeMSD = vecSpikeT(intPeakLocMSD);
-		%assign data
-		sMSD.intPeakLocMSD = intPeakLocMSD;
-		sMSD.dblPeakTimeMSD = dblPeakTimeMSD;
+		%assign peak data
+		sMSD.dblPeakTime = dblPeakTimeMSD;
+		sMSD.dblPeakWidth = dblPeakWidthMSD;
+		sMSD.vecPeakStartStop = [dblPeakStartT dblPeakStopT];
+		sMSD.intPeakLoc = intPeakLocMSD;
+		sMSD.vecPeakStartStopIdx = [intPeakStart intPeakStop];
+		%assign array data
 		sMSD.vecTime = vecPeakTime;
 		sMSD.vecIdx = vecPeakIdx;
 		sMSD.vecDuration = vecPeakDuration;
