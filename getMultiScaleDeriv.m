@@ -6,7 +6,7 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 	%	- vecV [N x 1]: values (e.g., z-scores)
 	%
 	%Optional inputs:
-	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of bins) [default: 3]
+	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 3]
 	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
 	%	- dblBase: base for exponential scale step size [default: 1.5]
 	%	- intPlot: integer, plotting switch (0=none, 1=plot) [default: 0]
@@ -37,6 +37,10 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 		intPlot = 0;
 	end
 	
+	%% reorder just in case
+	[vecT,vecReorder] = sort(vecT,'ascend');
+	vecV = vecV(vecReorder);
+	
 	%% prepare data
 	dblMaxScale = log(max(vecT)) / log(dblBase);
 	intN = numel(vecT);
@@ -60,7 +64,7 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 				if isempty(intIdxMinT),intIdxMinT=1;end
 				intIdxMaxT = find(vecT > dblMaxEdge,1);
 				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/dblScale;
+				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
 			end
 		end
 	catch %otherwise try normal loop
@@ -77,7 +81,7 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 				if isempty(intIdxMinT),intIdxMinT=1;end
 				intIdxMaxT = find(vecT > dblMaxEdge,1);
 				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/dblScale;
+				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
 			end
 		end
 	end

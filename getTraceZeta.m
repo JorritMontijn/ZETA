@@ -20,13 +20,13 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%		3) Peak time of multi-scale derivatives
 	%		4...N) Onsets of largest sustained peaks
 	%	- sZETA; structure with fields:
-	%		- dblZ; uncorrected peak z-score 
+	%		- dblZ; uncorrected peak z-score
 	%		- dblP; p-value corresponding to zeta
 	%		- dblPeakT; time corresponding to ZETA
 	%		- dblHzD; Cohen's D based on mean-rate stim/base difference
 	%		- dblHzP; p-value based on mean-rate stim/base difference
-	%		- vecTraceT: timestamps of trace entries (corresponding to vecZ)
-	%		- vecZ; z-score for all time points corresponding to vecTraceT
+	%		- vecRefT: timestamps of trace entries (corresponding to vecZ)
+	%		- vecZ; z-score for all time points corresponding to vecRefT
 	%		- vecRealDiff: real offset of spikes relative to uniform rate
 	%		- matRandDiff; matrix of shuffled runs with offset to uniform
 	%	- sMSD; structure with fields: (only if intLatencyPeaks > 0)
@@ -42,7 +42,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%		- vecPeakStartStopIdx; indices of peak start/stop (corresponding to sZETA.vecTraceT)
 	%		Additionally, it will return peak latencies using findsustainedpeaks.m:
 	%		- vecTime: latencies for activation
-	%		- vecIdx:  indices corresponding to peak locations in vecSpikeT/vecZ entries
+	%		- vecIdx:  indices corresponding to peak locations in vecRefT/vecZ entries
 	%		- vecDuration: peak durations
 	%		- vecEnergy: peak energies
 	%
@@ -123,6 +123,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%% run bootstraps
 	matRandDiff = nan(numel(vecMeanTrace),intResampNum);
+	hTic = tic;
 	for intResampling=1:intResampNum
 		%% msg
 		if boolVerbose && toc(hTic) > 5
@@ -154,9 +155,9 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	%define plots
-	vecRandMean = nanmean(matRandDiff,2);
-	vecRandSd = nanstd(matRandDiff,[],2);
-	vecZ = ((vecRealDiff-mean(vecRandMean))./mean(vecRandSd));
+	dblRandMean = nanmean(matRandDiff(:));
+	dblRandSd = nanstd(matRandDiff(:));
+	vecZ = ((vecRealDiff-dblRandMean)./mean(dblRandSd));
 	if numel(vecZ) < 3
 		dblZETA = 0;
 		sZETA = struct;
@@ -168,7 +169,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	[dummy,intPeakLoc]= max(abs(vecZ));
 	dblMaxZTime = vecTraceT(intPeakLoc);
 	dblZ = vecZ(intPeakLoc);
-	dblZETA = (sqrt(2)/sqrt(pi)) + dblZ*(1 - (2/pi)); %apply correction factor for half-normal
+	dblZETA = sign(dblZ)*((sqrt(2)/sqrt(pi)) + abs(dblZ)*(1 - (2/pi))); %apply correction factor for half-normal
 	dblP=1-(normcdf(abs(dblZETA))-normcdf(-abs(dblZETA)));
 	%find peak of inverse sign
 	[dummy,intPeakLocInvSign] = max(-sign(dblZ)*vecZ);
@@ -177,7 +178,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%build common timeframe
 	vecRefT = (dblSamplingFreq/2):dblSamplingFreq:dblUseMaxDur;
-		
+	
 	if boolStopSupplied
 		%% calculate mean-rate difference
 		%pre-allocate
@@ -293,7 +294,9 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	%% calculate MSD statistics
 	if ~isempty(sMSD) && intLatencyPeaks > 0
 		%get sustained peak onset
-		[vecPeakTime,vecPeakIdx,vecPeakDuration,vecPeakEnergy,vecSlope] = findsustainedpeaks(vecMSD,vecRefT,intLatencyPeaks);
+		if  intLatencyPeaks > 3
+			[vecPeakTime,vecPeakIdx,vecPeakDuration,vecPeakEnergy,vecSlope] = findsustainedpeaks(vecMSD,vecRefT,intLatencyPeaks);
+		end
 		%get MSD most prominent peak time
 		[vecValsPos,vecLocsPos,vecsWidthPos,vecPromsPos]=findpeaks(vecMSD);
 		[dblMaxPosVal,intPosIdxMSD] = max(vecValsPos);
@@ -310,7 +313,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 			intPeakLocMSD = vecLocsNeg(intIdxMSD);
 			dblPeakPromMSD = vecPromsNeg(intIdxMSD);
 			
-			dblCutOff = vecMSD(intPeakLocMSD) - dblPeakPromMSD/2;
+			dblCutOff = vecMSD(intPeakLocMSD) + dblPeakPromMSD/2;
 			indPeakMembers = vecMSD < dblCutOff;
 		end
 		%get potential starts/stops
@@ -321,10 +324,10 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		%find closest points
 		intPeakStart = intPeakLocMSD-min(intPeakLocMSD - vecPeakStarts(vecPeakStarts<intPeakLocMSD));
 		intPeakStop = intPeakLocMSD+min(vecPeakStops(vecPeakStops>intPeakLocMSD) - intPeakLocMSD);
-		dblPeakStartT = vecSpikeT(intPeakStart);
-		dblPeakStopT = vecSpikeT(intPeakStop);
+		dblPeakStartT = vecRefT(intPeakStart);
+		dblPeakStopT = vecRefT(intPeakStop);
 		dblPeakWidthMSD = dblPeakStopT-dblPeakStartT;
-		dblPeakTimeMSD = vecSpikeT(intPeakLocMSD);
+		dblPeakTimeMSD = vecRefT(intPeakLocMSD);
 		%assign peak data
 		sMSD.dblPeakTime = dblPeakTimeMSD;
 		sMSD.dblPeakWidth = dblPeakWidthMSD;
@@ -332,11 +335,19 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		sMSD.intPeakLoc = intPeakLocMSD;
 		sMSD.vecPeakStartStopIdx = [intPeakStart intPeakStop];
 		%assign array data
-		sMSD.vecTime = vecPeakTime;
-		sMSD.vecIdx = vecPeakIdx;
-		sMSD.vecDuration = vecPeakDuration;
-		sMSD.vecEnergy = vecPeakEnergy;
-		vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTimeMSD vecPeakTime(:)'];
+		if  intLatencyPeaks > 3
+			sMSD.vecTime = vecPeakTime;
+			sMSD.vecIdx = vecPeakIdx;
+			sMSD.vecDuration = vecPeakDuration;
+			sMSD.vecEnergy = vecPeakEnergy;
+			vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTimeMSD vecPeakTime(:)'];
+		else
+			sMSD.vecTime = [];
+			sMSD.vecIdx = [];
+			sMSD.vecDuration = [];
+			sMSD.vecEnergy = [];
+			vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTimeMSD];
+		end
 		vecLatencies = vecLatencies(1:intLatencyPeaks);
 		if intPlot > 0
 			hold on
@@ -347,8 +358,8 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 			hold off
 			title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,Sh=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000,vecPeakTime(1)*1000));
 			fixfig;
-		
-
+			
+			
 			vecHandles = get(gcf,'children');
 			ptrFirstSubplot = vecHandles(find(contains(get(vecHandles,'type'),'axes'),1,'last'));
 			axes(ptrFirstSubplot);
@@ -364,7 +375,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	else
 		vecLatencies = [];
 	end
-		
+	
 	%check number of latencies
 	if numel(vecLatencies) < intLatencyPeaks
 		vecLatencies(end+1:intLatencyPeaks) = nan;
@@ -381,7 +392,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 			sZETA.dblHzD = dblHzD;
 			sZETA.dblHzP = dblHzP;
 		end
-		sZETA.vecTraceT = vecTraceT;
+		sZETA.vecRefT = vecRefT;
 		sZETA.vecZ = vecZ;
 		sZETA.vecRealDiff = vecRealDiff;
 		sZETA.matRandDiff = matRandDiff;
