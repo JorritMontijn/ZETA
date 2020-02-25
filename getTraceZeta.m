@@ -103,7 +103,6 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%% build onset/offset vectors
 	vecEventStarts = varEventTimes(:,1);
-	vecEventStops = varEventTimes(:,2);
 	
 	%% get trial responses
 	intMaxRep = size(vecEventStarts,1);
@@ -182,6 +181,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	if boolStopSupplied
 		%% calculate mean-rate difference
 		%pre-allocate
+		vecEventStops = varEventTimes(:,2);
 		vecStimAct = zeros(intMaxRep,1);
 		vecBaseAct = zeros(intMaxRep,1);
 		dblMedianBaseDur = median(vecEventStarts(2:end) - vecEventStops(1:(end-1)));
@@ -286,7 +286,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 	
 	%% calculate MSD
 	if intLatencyPeaks > 0
-		[vecMSD,sMSD] = getMultiScaleDeriv(vecRefT,vecRealDiff,[],[],[],intPlot);
+		[vecMSD,sMSD] = getMultiScaleDeriv(vecRefT,vecRealDiff,0,[],[],intPlot);
 	else
 		sMSD = [];
 	end
@@ -351,12 +351,16 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 		vecLatencies = vecLatencies(1:intLatencyPeaks);
 		if intPlot > 0
 			hold on
-			scatter(vecPeakTime(1),vecMSD(vecPeakIdx(1)),'rx');
 			scatter(dblPeakTimeMSD,vecMSD(intPeakLocMSD),'gx');
 			scatter(dblMaxZTime,vecMSD(intPeakLoc),'bx');
 			scatter(dblMaxZTimeInvSign,vecMSD(intPeakLocInvSign),'b*');
+			if intLatencyPeaks > 3
+				scatter(vecPeakTime(1),vecMSD(vecPeakIdx(1)),'rx');
+				title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,Sh=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000,vecPeakTime(1)*1000));
+			else
+				title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000));
+			end
 			hold off
-			title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,Sh=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000,vecPeakTime(1)*1000));
 			fixfig;
 			
 			
@@ -365,7 +369,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getTraceZeta(vecTraceT,vecTraceAct,
 			axes(ptrFirstSubplot);
 			vecY = get(gca,'ylim');
 			hold on;
-			plot(vecPeakTime(1)*[1 1],vecY,'r--');
+			if intLatencyPeaks > 3,plot(vecPeakTime(1)*[1 1],vecY,'r--');end
 			plot(dblPeakTimeMSD*[1 1],vecY,'g--');
 			plot(dblMaxZTime*[1 1],vecY,'b--');
 			plot(dblMaxZTimeInvSign*[1 1],vecY,'b-.');
