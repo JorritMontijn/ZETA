@@ -1,31 +1,37 @@
-function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot)
+function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur)
 	%getMultiScaleDeriv Returns multi-scale derivative. Syntax:
-	%   [vecMSD,sMSD] = getMultiScaleDeriv(vecX,vecY,intSmoothSd,dblMinScale,dblBase)
+	%   [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur)
 	%Required input:
 	%	- vecT [N x 1]: timestamps (e.g., spike times)
 	%	- vecV [N x 1]: values (e.g., z-scores)
 	%
 	%Optional inputs:
-	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 3]
+	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 0]
 	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
 	%	- dblBase: base for exponential scale step size [default: 1.5]
-	%	- intPlot: integer, plotting switch (0=none, 1=plot) [default: 0]
+	%	- intPlot: integer, plotting switch (0=none, 1=plot rates, 2=subplot 5&6 of [2 3]) [default: 0]
+	%	- dblMeanRate: mean spiking rate to normalize vecRate (optional)
+	%	- dblUseMaxDur: trial duration to normalize vecRate (optional)
 	%
 	%Outputs:
-	%	- vecMSD; Multi-scale derivative
+	%	- vecRate; Instantaneous spiking rate
 	%	- sMSD; structure with fields:
-	%		- vecMSD; Multi-scale derivative
+	%		- vecRate; instantaneous spiking rates (like a PSTH)
+	%		- vecT; time-points corresponding to vecRate (same as input vecT)
+	%		- vecM; Mean of multi-scale derivatives
 	%		- vecScale; timescales used to calculate derivatives
-	%		- matSmoothMSD; smoothed multi-scale derivatives matrix
-	%		- matMSD; raw multi-scale derivatives matrix
+	%		- matMSD; multi-scale derivatives matrix
+	%		- vecV; values on which vecRate is calculated (same as input vecV)
 	%
 	%Version history:
-	%1.0 - January 24 2019
+	%1.0 - January 24 2020
 	%	Created by Jorrit Montijn - split from previous getMultiScaleDeriv.
+	%1.1 - February 26 2020
+	%	Added instantaneous spiking rate rescaling [by JM]
 	
 	%% set default values
 	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)
-		intSmoothSd = 5;
+		intSmoothSd = 0;
 	end
 	if ~exist('dblBase','var') || isempty(dblBase)
 		dblBase = 1.5;
@@ -36,20 +42,29 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 	if ~exist('intPlot','var') || isempty(intPlot)
 		intPlot = 0;
 	end
+	if ~exist('dblMeanRate','var') || isempty(dblMeanRate)
+		dblMeanRate = 1;
+		strLabelY = 'Time-locked activation (a.u.)';
+	else
+		strLabelY = 'Spiking rate (Hz)';
+	end
+	if ~exist('dblUseMaxDur','var') || isempty(dblUseMaxDur)
+		dblUseMaxDur = range(vecT);
+	end
 	
 	%% reorder just in case
 	[vecT,vecReorder] = sort(vecT,'ascend');
 	vecV = vecV(vecReorder);
 	
 	%% prepare data
-	dblMaxScale = log(max(vecT)) / log(dblBase);
+	dblMaxScale = log(max(vecT)/10) / log(dblBase);
 	intN = numel(vecT);
 	
 	%% get multi-scale derivative
 	vecExp = dblMinScale:dblMaxScale;
 	vecScale=dblBase.^vecExp;
 	intScaleNum = numel(vecScale);
-	matDeriv = zeros(intN,intScaleNum);
+	matMSD = zeros(intN,intScaleNum);
 	try %try parallel
 		parfor intScaleIdx=1:intScaleNum
 			dblScale = vecScale(intScaleIdx);
@@ -64,7 +79,8 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 				if isempty(intIdxMinT),intIdxMinT=1;end
 				intIdxMaxT = find(vecT > dblMaxEdge,1);
 				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+				if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
+				matMSD(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
 			end
 		end
 	catch %otherwise try normal loop
@@ -81,7 +97,8 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 				if isempty(intIdxMinT),intIdxMinT=1;end
 				intIdxMaxT = find(vecT > dblMaxEdge,1);
 				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				matDeriv(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+				if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
+				matMSD(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
 			end
 		end
 	end
@@ -90,31 +107,48 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 	if intSmoothSd > 0
 		vecFilt = normpdf(-2*(intSmoothSd):2*intSmoothSd,0,intSmoothSd)';
 		vecFilt = vecFilt./sum(vecFilt);
-		matSmoothDeriv = conv2(matDeriv,vecFilt,'same');
+		%pad array
+		matMSD = padarray(matMSD,floor(size(vecFilt)/2),'replicate');
+		
+		%filter
+		matMSD = conv2(matMSD,vecFilt,'valid');
+		
+		%title
+		strTitle = 'Smoothed MSDs';
 	else
-		matSmoothDeriv = matDeriv;
+		%title
+		strTitle = 'MSDs';
 	end
 	%mean
-	vecMSD = mean(matSmoothDeriv,2);
+	vecM = mean(matMSD,2);
+	
+	%weighted average of vecM by inter-spike intervals
+	dblMeanM = sum(((vecM(1:(end-1)) + vecM(2:end))/2).*diff(vecT));
+	
+	%rescale to real firing rates
+	vecRate = dblMeanRate * ((vecM + 1/dblUseMaxDur)/(dblMeanM + 1/dblUseMaxDur));
 		
 	%% plot
-	if intPlot > 0
+	if intPlot == 1
+		stairs(vecT,vecRate)
+		xlabel('Time (s)');
+		ylabel(strLabelY);
+		title(sprintf('Peri Event Plot (PEP)'));
+		fixfig
+	elseif intPlot > 1
 		subplot(2,3,5);
-		imagesc(matSmoothDeriv');
-		vecTicksY = get(gca,'ytick');
-		cellTicksY = cellfun(@sprintf,cellfill('%.1e',size(vecTicksY)),vec2cell(vecScale(vecTicksY)),'UniformOutput',false);
-		set(gca,'yticklabel',cellTicksY);
-		ytickangle(gca,75)
+		imagesc(matMSD');
+		set(gca,'ytick',[]);
 		ylabel(sprintf('Scale (s) (%.1es - %.1es)',vecScale(1),vecScale(end)));
 		xlabel('Timestamp index (#)');
-		title('Smoothed MSDs');
+		title(strTitle);
 		fixfig
 		grid off
 		
 		subplot(2,3,6);
-		plot(vecT,vecMSD)
+		stairs(vecT,vecRate)
 		xlabel('Time (s)');
-		ylabel('Time-locked activation');
+		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));
 		fixfig
 	end
@@ -122,11 +156,11 @@ function [vecMSD,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,db
 	%% build output
 	if nargout > 1
 		sMSD = struct;
-		sMSD.vecMSD = vecMSD;
-		sMSD.vecScale = vecScale;
-		sMSD.matSmoothMSD = matSmoothDeriv;
-		sMSD.matMSD = matDeriv;
+		sMSD.vecRate = vecRate;
 		sMSD.vecT = vecT;
+		sMSD.vecM = vecM;
+		sMSD.vecScale = vecScale;
+		sMSD.matMSD = matMSD;
 		sMSD.vecV = vecV;
 	end
 end

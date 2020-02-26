@@ -1,11 +1,15 @@
-function [vecOut,cellSize] = cell2vec(cellIn)
-	%UNTITLED7 Summary of this function goes here
-	%   Detailed explanation goes here
+function vecOut = cell2vec(cellIn)
+	%cell2vec Transforms cell array to vector. Syntax:
+	%   vecOut = cell2vec(cellIn)
 	
-	vecOut = [];
+	intElements = sum(cellfun(@numel,cellIn));
+	vecOut = nan(intElements,1);
+	intElCounter = 1;
 	for intCell=1:numel(cellIn)
-		cellSize{intCell} = size(cellIn{intCell});
-		vecOut = [vecOut;cellIn{intCell}(:)];
+		vecData = cellIn{intCell}(:);
+		intCellSize = numel(vecData);
+		vecOut(intElCounter:(intElCounter+intCellSize-1)) = vecData;
+		intElCounter = intElCounter + intCellSize;
 	end
 end
 

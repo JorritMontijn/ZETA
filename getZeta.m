@@ -1,49 +1,54 @@
-function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
+function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%getZeta Calculates neuronal responsiveness index zeta
-	%syntax: [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
+	%syntax: [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
 	%	input:
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
 	%	- dblUseMaxDur: float (s), window length for calculating ZETA: ignore all spikes beyond this duration after event onset
 	%								[default: median of event onset to event onset]
 	%	- intResampNum: integer, number of resamplings (default: 50)
-	%	- intPlot: integer, plotting switch (0=none, 1=traces only, 2=raster plot as well) (default: 0)
-	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (default: 3)
-	%	- boolVerbose: boolean, switch to print messages
+	%	- intPlot: integer, plotting switch (0=none, 1=inst. rate only, 2=traces only, 3=raster plot as well, 4=adds latencies in raster plot) (default: 0)
+	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (1-4) (default: 4)
+	%	- vecRestrictRange: temporal range within which to restrict onset/peak latencies (default: [-inf inf])
+	%	- boolVerbose: boolean, switch to print progress messages (default: false)
 	%
 	%	output:
 	%	- dblZETA; Zenith of Event-based Time-locked Anomalies: FDR-corrected responsiveness z-score (i.e., >2 is significant)
 	%	- vecLatencies; different latency estimates, number determined by intLatencyPeaks. If no peaks are detected, it returns NaNs:
 	%		1) Latency of ZETA
 	%		2) Latency of largest z-score with inverse sign to ZETA
-	%		3) Peak time of multi-scale derivatives
-	%		4...N) Onsets of largest sustained peaks
+	%		3) Peak time of instantaneous firing rate
+	%		4) Onset time of above peak, defined as the first crossing of peak half-height
 	%	- sZETA; structure with fields:
 	%		- dblZ; uncorrected peak z-score
 	%		- dblP; p-value corresponding to zeta
 	%		- dblPeakT; time corresponding to ZETA
+	%		- intPeakIdx; entry corresponding to ZETA
 	%		- dblMeanD; Cohen's D based on mean-rate stim/base difference
 	%		- dblMeanP; p-value based on mean-rate stim/base difference
 	%		- vecSpikeT: timestamps of spike times (corresponding to vecZ)
 	%		- vecZ; z-score for all time points corresponding to vecSpikeT
 	%		- vecRealDiff: real offset of spikes relative to uniform rate
 	%		- matRandDiff; matrix of shuffled runs with offset to uniform
-	%	- sMSD; structure with fields: (only if intLatencyPeaks > 0)
-	%		- vecMSD; Multi-scale derivative provides high-resolution time-locked activation (like a PSTH)
+	%		- dblZ_InvSign; largest peak z-score of inverse sign to ZETA
+	%		- dblPeakT_InvSign; time corresponding to -ZETA
+	%		- intPeakIdx_InvSign; entry corresponding to -ZETA
+	%		- dblUseMaxDur; window length used to calculate ZETA
+	%	- sRate; structure with fields: (only if intLatencyPeaks > 0)
+	%		- vecRate; instantaneous spiking rates (like a PSTH)
+	%		- vecT; time-points corresponding to vecRate (same as sZETA.vecSpikeT)
+	%		- vecM; Mean of multi-scale derivatives
 	%		- vecScale; timescales used to calculate derivatives
-	%		- matSmoothMSD; smoothed multi-scale derivatives matrix
-	%		- matMSD; raw multi-scale derivatives matrix
+	%		- matMSD; multi-scale derivatives matrix
+	%		- vecV; values on which vecRate is calculated (same as sZETA.vecZ)
 	%		Data on the peak:
 	%		- dblPeakTime; time of peak (in seconds)
 	%		- dblPeakWidth; duration of peak (in seconds)
 	%		- vecPeakStartStop; start and stop time of peak (in seconds)
 	%		- intPeakLoc; spike index of peak (corresponding to sZETA.vecSpikeT)
 	%		- vecPeakStartStopIdx; spike indices of peak start/stop (corresponding to sZETA.vecSpikeT)
-	%		Additionally, it will return peak latencies using findsustainedpeaks.m:
-	%		- vecTime: latencies for activation
-	%		- vecIdx:  indices corresponding to peak locations in vecSpikeT/vecZ entries
-	%		- vecDuration: peak durations
-	%		- vecEnergy: peak energies
+	%		Additionally, it will return peak onset latency (first crossing of peak half-height) using getOnset.m:
+	%		- dblOnset: latency for peak onset
 	%
 	%Version history:
 	%0.9 - June 27 2019
@@ -56,6 +61,8 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 	%	Minor changes and bug fixes [by JM]
 	%2.2 - February 11 2020
 	%	Peak width, analytical ZETA correction [by JM]
+	%2.3 - February 26 2020
+	%	MSD-based instantaneous spiking rates, onset latency [by JM]
 	
 	%% prep data
 	%ensure orientation
@@ -86,11 +93,16 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 		intPlot = 0;
 	end
 	
-	%get boolPlot
+	%get intLatencyPeaks
 	if ~exist('intLatencyPeaks','var') || isempty(intLatencyPeaks)
-		intLatencyPeaks = 3;
+		intLatencyPeaks = 4;
 	end
 	
+	%get boolPlot
+	if ~exist('vecRestrictRange','var') || isempty(vecRestrictRange)
+		vecRestrictRange = [-inf inf];
+	end
+
 	%get boolVerbose
 	if ~exist('boolVerbose','var') || isempty(boolVerbose)
 		boolVerbose = false;
@@ -115,7 +127,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 	end
 	
 	%get spikes in fold
-	vecSpikeT = sort(cell2vec(cellSpikeTimesPerTrial),'ascend');
+	vecSpikeT = [0;sort(cell2vec(cellSpikeTimesPerTrial),'ascend');dblUseMaxDur];
 	intSpikes = numel(vecSpikeT);
 	
 	%% run normal
@@ -151,15 +163,20 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 		dblZETA = 0;
 		sZETA = [];
 		vecLatencies = [];
-		sMSD = [];
+		sRate = [];
 		warning([mfilename ':InsufficientSamples'],'Insufficient samples to calculate zeta');
+		
+		%build placeholder outputs
+		if numel(vecLatencies) < intLatencyPeaks
+			vecLatencies(end+1:intLatencyPeaks) = nan;
+		end
 		return
 	end
 	
 	%find highest peak and retrieve value
-	[dummy,intPeakLoc]= max(abs(vecZ));
-	dblMaxZTime = vecSpikeT(intPeakLoc);
-	dblZ = vecZ(intPeakLoc);
+	[dummy,intZETALoc]= max(abs(vecZ));
+	dblMaxZTime = vecSpikeT(intZETALoc);
+	dblZ = vecZ(intZETALoc);
 	dblZETA = sign(dblZ)*((sqrt(2)/sqrt(pi)) + abs(dblZ)*(1 - (2/pi))); %apply correction factor for half-normal
 	dblP=1-(normcdf(abs(dblZETA))-normcdf(-abs(dblZETA)));
 	%find peak of inverse sign
@@ -193,7 +210,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 	end
 	
 	%% plot
-	if intPlot
+	if intPlot > 1
 		%plot maximally 50 traces
 		intPlotIters = min([size(matRandDiff,2) 50]);
 		
@@ -205,13 +222,14 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 		figure(gcf);
 		drawnow;
 		
-		if intPlot == 2
+		if intPlot > 2
 			subplot(2,3,1)
 			plotRaster(vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
 			xlabel('Time from event (s)');
 			ylabel('Trial #');
 			title('Spike raster plot');
 			fixfig;
+			grid off;
 		end
 		
 		%plot
@@ -242,7 +260,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 			plot(vecSpikeT,matRandDiff(:,intOffset),'Color',[0.5 0.5 0.5]);
 		end
 		plot(vecSpikeT,vecRealDiff,'Color',lines(1));
-		scatter(dblMaxZTime,vecRealDiff(intPeakLoc),'bx');
+		scatter(dblMaxZTime,vecRealDiff(intZETALoc),'bx');
 		scatter(dblMaxZTimeInvSign,vecRealDiff(intPeakLocInvSign),'b*');
 		hold off
 		xlabel('Time from event (s)');
@@ -253,80 +271,72 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblP));
 		end
 		fixfig
-		
 	end
 	
 	%% calculate MSD if significant
 	if intLatencyPeaks > 0
-		[vecMSD,sMSD] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,[],[],[],intPlot);
+		%get average of multi-scale derivatives, and rescaled to instantaneous spiking rate
+		dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
+		[vecRate,sRate] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,[],[],[],intPlot,dblMeanRate,dblUseMaxDur);
 	else
-		sMSD = [];
+		sRate = [];
 	end
 	
 	%% calculate MSD statistics
-	if ~isempty(sMSD) && intLatencyPeaks > 0
-		%get sustained peak onsets
-		if intLatencyPeaks > 3
-			[vecPeakTime,vecPeakIdx,vecPeakDuration,vecPeakEnergy,vecSlope] = findsustainedpeaks(vecMSD,vecSpikeT,intLatencyPeaks);
-		end
+	if ~isempty(sRate) && intLatencyPeaks > 0
 		%get MSD peak
-		[dblPeakValueMSD,dblPeakTimeMSD,dblPeakWidthMSD,vecPeakStartStopMSD,intPeakLocMSD,vecPeakStartStopIdxMSD] = getPeak(vecMSD,vecSpikeT);
-		sMSD.dblPeakTime = dblPeakTimeMSD;
-		sMSD.dblPeakWidth = dblPeakWidthMSD;
-		sMSD.vecPeakStartStop = vecPeakStartStopMSD;
-		sMSD.intPeakLoc = intPeakLocMSD;
-		sMSD.vecPeakStartStopIdx = vecPeakStartStopIdxMSD;
+		[dblPeakRate,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecRate,vecSpikeT,vecRestrictRange);
+		sRate.dblPeakRate = dblPeakRate;
+		sRate.dblPeakTime = dblPeakTime;
+		sRate.dblPeakWidth = dblPeakWidth;
+		sRate.vecPeakStartStop = vecPeakStartStop;
+		sRate.intPeakLoc = intPeakLoc;
+		sRate.vecPeakStartStopIdx = vecPeakStartStopIdx;
 		
-		if ~isnan(dblPeakTimeMSD)
+		
+		if ~isnan(dblPeakTime)
 			%assign array data
 			if intLatencyPeaks > 3
-				sMSD.vecTime = vecPeakTime;
-				sMSD.vecIdx = vecPeakIdx;
-				sMSD.vecDuration = vecPeakDuration;
-				sMSD.vecEnergy = vecPeakEnergy;
-				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTimeMSD vecPeakTime(:)'];
+				%get onset
+				[dblOnset,dblOnsetVal] = getOnset(vecRate,vecSpikeT,dblPeakTime,vecRestrictRange);
+				sRate.dblOnset = dblOnset;
+				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTime dblOnset];
 			else
-				sMSD.vecTime = [];
-				sMSD.vecIdx = [];
-				sMSD.vecDuration = [];
-				sMSD.vecEnergy = [];
-				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTimeMSD];
+				sRate.dblOnset = [];
+				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTime];
 			end
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
 			if intPlot > 0
 				hold on
-				scatter(dblPeakTimeMSD,vecMSD(intPeakLocMSD),'gx');
-				scatter(dblMaxZTime,vecMSD(intPeakLoc),'bx');
-				scatter(dblMaxZTimeInvSign,vecMSD(intPeakLocInvSign),'b*');
+				scatter(dblPeakTime,vecRate(intPeakLoc),'gx');
+				scatter(dblMaxZTime,vecRate(intZETALoc),'bx');
+				scatter(dblMaxZTimeInvSign,vecRate(intPeakLocInvSign),'b*');
 				if intLatencyPeaks > 3
-					scatter(vecPeakTime(1),vecMSD(vecPeakIdx(1)),'rx');
-					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,Sh=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000,vecPeakTime(1)*1000));
+					scatter(dblOnset,dblOnsetVal,'rx');
+					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
 				else
-					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTimeMSD*1000));
+					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000));
 				end
 				hold off
 				fixfig;
 				
-				
-				vecHandles = get(gcf,'children');
-				ptrFirstSubplot = vecHandles(find(contains(get(vecHandles,'type'),'axes'),1,'last'));
-				axes(ptrFirstSubplot);
-				vecY = get(gca,'ylim');
-				hold on;
-				if intLatencyPeaks > 3,plot(vecPeakTime(1)*[1 1],vecY,'r--');end
-				plot(dblPeakTimeMSD*[1 1],vecY,'g--');
-				plot(dblMaxZTime*[1 1],vecY,'b--');
-				plot(dblMaxZTimeInvSign*[1 1],vecY,'b-.');
-				
-				hold off
+				if intPlot > 3
+					vecHandles = get(gcf,'children');
+					ptrFirstSubplot = vecHandles(find(contains(get(vecHandles,'type'),'axes'),1,'last'));
+					axes(ptrFirstSubplot);
+					vecY = get(gca,'ylim');
+					hold on;
+					if intLatencyPeaks > 3,plot(dblOnset*[1 1],vecY,'r--');end
+					plot(dblPeakTime*[1 1],vecY,'g--');
+					plot(dblMaxZTime*[1 1],vecY,'b--');
+					plot(dblMaxZTimeInvSign*[1 1],vecY,'b-.');
+					hold off
+				end
 			end
 		else
 			%placeholder peak data
-			sMSD.vecTime = [];
-			sMSD.vecIdx = [];
-			sMSD.vecDuration = [];
-			sMSD.vecEnergy = [];
-			vecLatencies = [nan nan nan];
+			sRate.dblOnset = [];
+			vecLatencies = [nan nan nan nan];
 		end
 	else
 		vecLatencies = [];
@@ -343,7 +353,7 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 		sZETA.dblZ = dblZ;
 		sZETA.dblP = dblP;
 		sZETA.dblPeakT = dblMaxZTime;
-		sZETA.intPeakIdx = intPeakLoc;
+		sZETA.intPeakIdx = intZETALoc;
 		if boolStopSupplied
 			sZETA.dblMeanD = dblMeanD;
 			sZETA.dblMeanP = dblMeanP;
@@ -354,8 +364,9 @@ function [dblZETA,vecLatencies,sZETA,sMSD] = getZeta(vecSpikeTimes,varEventTimes
 		sZETA.matRandDiff = matRandDiff;
 		
 		sZETA.dblZ_InvSign = dblZ_InvSign;
-		sZETA.intPeakIdx_InvSign = intPeakLocInvSign;
 		sZETA.dblPeakT_InvSign = dblMaxZTimeInvSign;
+		sZETA.intPeakIdx_InvSign = intPeakLocInvSign;
+		sZETA.dblUseMaxDur = dblUseMaxDur;
 	end
 end
 

@@ -17,7 +17,7 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	%	- vecPeakStartStopIdx: start/stop indices of peak
 	%
 	%Version history:
-	%1.0 - February 18 2019
+	%1.0 - February 18 2020
 	%	Created by Jorrit Montijn
 	
 	%check inputs
@@ -50,13 +50,13 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	
 	if (isempty(dblMaxPosVal) && isempty(dblMaxNegVal))
 		indPeakMembers = [];
-	elseif (~isempty(dblMaxPosVal) && isempty(dblMaxNegVal)) || (abs(dblMaxPosVal) >= abs(dblMaxNegVal))
+	elseif (~isempty(dblMaxPosVal) && isempty(dblMaxNegVal)) || (~isempty(dblMaxPosVal) && (abs(dblMaxPosVal) >= abs(dblMaxNegVal)))
 		intIdx = intPosIdx;
 		intPeakLoc = vecLocsPos(intIdx);
 		dblPeakProm = vecPromsPos(intIdx);
 		dblCutOff = vecData(intPeakLoc) - dblPeakProm/2;
 		indPeakMembers = vecData > dblCutOff;
-	elseif (isempty(dblMaxPosVal) && ~isempty(dblMaxNegVal)) ||  (abs(dblMaxPosVal) < abs(dblMaxNegVal))
+	elseif (isempty(dblMaxPosVal) && ~isempty(dblMaxNegVal)) || (~isempty(dblMaxNegVal) && (abs(dblMaxPosVal) < abs(dblMaxNegVal)))
 		intIdx = intNegIdx;
 		intPeakLoc = vecLocsNeg(intIdx);
 		dblPeakProm = vecPromsNeg(intIdx);
