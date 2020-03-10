@@ -224,7 +224,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 		
 		if intPlot > 2
 			subplot(2,3,1)
-			plotRaster(vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
+			plotRaster(vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur,10000);
 			xlabel('Time from event (s)');
 			ylabel('Trial #');
 			title('Spike raster plot');

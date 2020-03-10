@@ -72,15 +72,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 			%run through all points
 			for intS=1:intN
 				%select points within window
-				dblT = vecT(intS);
-				dblMinEdge = dblT - dblScale/2;
-				dblMaxEdge = dblT + dblScale/2;
-				intIdxMinT = find(vecT > dblMinEdge,1);
-				if isempty(intIdxMinT),intIdxMinT=1;end
-				intIdxMaxT = find(vecT > dblMaxEdge,1);
-				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
-				matMSD(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+				matMSD(intS,intScaleIdx) = getD(dblScale,intS,intN,vecT,vecV);
 			end
 		end
 	catch %otherwise try normal loop
@@ -90,15 +82,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 			%run through all points
 			for intS=1:intN
 				%select points within window
-				dblT = vecT(intS);
-				dblMinEdge = dblT - dblScale/2;
-				dblMaxEdge = dblT + dblScale/2;
-				intIdxMinT = find(vecT > dblMinEdge,1);
-				if isempty(intIdxMinT),intIdxMinT=1;end
-				intIdxMaxT = find(vecT > dblMaxEdge,1);
-				if isempty(intIdxMaxT),intIdxMaxT=intN;end
-				if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
-				matMSD(intS,intScaleIdx) = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+				matMSD(intS,intScaleIdx) = getD(dblScale,intS,intN,vecT,vecV);
 			end
 		end
 	end
@@ -123,7 +107,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	vecM = mean(matMSD,2);
 	
 	%weighted average of vecM by inter-spike intervals
-	dblMeanM = sum(((vecM(1:(end-1)) + vecM(2:end))/2).*diff(vecT));
+	dblMeanM = (1/dblUseMaxDur)*sum(((vecM(1:(end-1)) + vecM(2:end))/2).*diff(vecT));
 	
 	%rescale to real firing rates
 	vecRate = dblMeanRate * ((vecM + 1/dblUseMaxDur)/(dblMeanM + 1/dblUseMaxDur));
@@ -164,4 +148,15 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		sMSD.vecV = vecV;
 	end
 end
-
+function dblD = getD(dblScale,intS,intN,vecT,vecV)
+	%select points within window
+	dblT = vecT(intS);
+	dblMinEdge = dblT - dblScale/2;
+	dblMaxEdge = dblT + dblScale/2;
+	intIdxMinT = find(vecT > dblMinEdge,1);
+	if isempty(intIdxMinT),intIdxMinT=1;end
+	intIdxMaxT = find(vecT > dblMaxEdge,1);
+	if isempty(intIdxMaxT),intIdxMaxT=intN;end
+	if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
+	dblD = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+end
