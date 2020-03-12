@@ -63,6 +63,8 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	%	Peak width, analytical ZETA correction [by JM]
 	%2.3 - February 26 2020
 	%	MSD-based instantaneous spiking rates, onset latency [by JM]
+	%2.4 - March 11 2020
+	%	Closed-form statistical significance using Gumbel distribution [by	JM]
 	
 	%% prep data
 	%ensure orientation
@@ -146,6 +148,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 		end
 		%% get random subsample
 		vecStimUseOnTime = vecEventStarts(:,1) + 2*dblUseMaxDur*(rand(size(vecEventStarts(:,1)))-0.5);
+		%vecStimUseOnTime = min(vecEventStarts(:,1)) + range(vecEventStarts)*rand(size(vecEventStarts(:,1)));
 		
 		%get temp offset
 		[vecRandDiff,vecRandFrac,vecRandFracLinear] = ...
@@ -177,8 +180,10 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	[dummy,intZETALoc]= max(abs(vecZ));
 	dblMaxZTime = vecSpikeT(intZETALoc);
 	dblZ = vecZ(intZETALoc);
-	dblZETA = sign(dblZ)*((sqrt(2)/sqrt(pi)) + abs(dblZ)*(1 - (2/pi))); %apply correction factor for half-normal
-	dblP=1-(normcdf(abs(dblZETA))-normcdf(-abs(dblZETA)));
+	
+	%calculate statistical significance using Gumbel distribution
+	[dblP,dblZETA] = getGumbel(numel(vecZ),dblZ); 
+	
 	%find peak of inverse sign
 	[dummy,intPeakLocInvSign] = max(-sign(dblZ)*vecZ);
 	dblMaxZTimeInvSign = vecSpikeT(intPeakLocInvSign);
@@ -313,7 +318,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 				scatter(dblMaxZTimeInvSign,vecRate(intPeakLocInvSign),'b*');
 				if intLatencyPeaks > 3
 					scatter(dblOnset,dblOnsetVal,'rx');
-					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
+					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.2fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
 				else
 					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000));
 				end
