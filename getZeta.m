@@ -1,4 +1,4 @@
-function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
+function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%getZeta Calculates neuronal responsiveness index zeta
 	%syntax: [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
 	%	input:
@@ -73,16 +73,16 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	%calculate stim/base difference?
 	boolStopSupplied = false;
 	dblMeanD = nan;
-	if size(varEventTimes,2) > 2
-		varEventTimes = varEventTimes';
+	if size(matEventTimes,2) > 2
+		matEventTimes = matEventTimes';
 	end
-	if size(varEventTimes,2) == 2
+	if size(matEventTimes,2) == 2
 		boolStopSupplied = true;
 	end
 	
 	%trial dur
 	if ~exist('dblUseMaxDur','var') || isempty(dblUseMaxDur)
-		dblUseMaxDur = median(diff(varEventTimes(:,1)));
+		dblUseMaxDur = median(diff(matEventTimes(:,1)));
 	end
 	
 	%get resampling num
@@ -111,11 +111,11 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	end
 	
 	%% build onset/offset vectors
-	vecEventStarts = varEventTimes(:,1);
+	vecEventStarts = matEventTimes(:,1);
 	
 	%% prepare interpolation points
 	%pre-allocate
-	intMaxRep = size(varEventTimes,1);
+	intMaxRep = size(matEventTimes,1);
 	cellSpikeTimesPerTrial = cell(intMaxRep,1);
 	
 	%go through trials to build spike time vector
@@ -159,10 +159,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	end
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
-	%define plots
-	dblRandSd = nanstd(matRandDiff(:));
-	vecZ = vecRealDiff./dblRandSd;
-	if numel(vecZ) < 3
+	if numel(vecRealDiff) < 3
 		dblZETA = 0;
 		sZETA = [];
 		vecLatencies = [];
@@ -177,22 +174,28 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	end
 	
 	%find highest peak and retrieve value
-	[dummy,intZETALoc]= max(abs(vecZ));
-	dblMaxZTime = vecSpikeT(intZETALoc);
-	dblZ = vecZ(intZETALoc);
+	vecMaxRandD = max(abs(matRandDiff),[],1);
+	dblRandMu = mean(vecMaxRandD);
+	dblRandVar = var(vecMaxRandD);
+	[dblPosD,intZETALoc]= max(abs(vecRealDiff));
+	
+	%get location
+	dblMaxDTime = vecSpikeT(intZETALoc);
+	dblD = vecRealDiff(intZETALoc);
 	
 	%calculate statistical significance using Gumbel distribution
-	[dblP,dblZETA] = getGumbel(numel(vecZ),dblZ); 
+	[dblP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
+	%fprintf('Pre-corr d=%.3f,post-corr z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	
 	%find peak of inverse sign
-	[dummy,intPeakLocInvSign] = max(-sign(dblZ)*vecZ);
-	dblMaxZTimeInvSign = vecSpikeT(intPeakLocInvSign);
-	dblZ_InvSign = vecZ(intPeakLocInvSign);
+	[dummy,intPeakLocInvSign] = max(-sign(dblD)*vecRealDiff);
+	dblMaxDTimeInvSign = vecSpikeT(intPeakLocInvSign);
+	dblD_InvSign = vecRealDiff(intPeakLocInvSign);
 	
 	if boolStopSupplied
 		%% calculate mean-rate difference
 		%pre-allocate
-		vecEventStops = varEventTimes(:,2);
+		vecEventStops = matEventTimes(:,2);
 		vecStimHz = zeros(intMaxRep,1);
 		vecBaseHz = zeros(intMaxRep,1);
 		dblMedianBaseDur = median(vecEventStarts(2:end) - vecEventStops(1:(end-1)));
@@ -265,8 +268,8 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 			plot(vecSpikeT,matRandDiff(:,intOffset),'Color',[0.5 0.5 0.5]);
 		end
 		plot(vecSpikeT,vecRealDiff,'Color',lines(1));
-		scatter(dblMaxZTime,vecRealDiff(intZETALoc),'bx');
-		scatter(dblMaxZTimeInvSign,vecRealDiff(intPeakLocInvSign),'b*');
+		scatter(dblMaxDTime,vecRealDiff(intZETALoc),'bx');
+		scatter(dblMaxDTimeInvSign,vecRealDiff(intPeakLocInvSign),'b*');
 		hold off
 		xlabel('Time from event (s)');
 		ylabel('Offset of data from linear (s)');
@@ -305,22 +308,22 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 				%get onset
 				[dblOnset,dblOnsetVal] = getOnset(vecRate,vecSpikeT,dblPeakTime,vecRestrictRange);
 				sRate.dblOnset = dblOnset;
-				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTime dblOnset];
+				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime dblOnset];
 			else
 				sRate.dblOnset = [];
-				vecLatencies = [dblMaxZTime dblMaxZTimeInvSign dblPeakTime];
+				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime];
 			end
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
 			if intPlot > 0
 				hold on
 				scatter(dblPeakTime,vecRate(intPeakLoc),'gx');
-				scatter(dblMaxZTime,vecRate(intZETALoc),'bx');
-				scatter(dblMaxZTimeInvSign,vecRate(intPeakLocInvSign),'b*');
+				scatter(dblMaxDTime,vecRate(intZETALoc),'bx');
+				scatter(dblMaxDTimeInvSign,vecRate(intPeakLocInvSign),'b*');
 				if intLatencyPeaks > 3
 					scatter(dblOnset,dblOnsetVal,'rx');
-					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.2fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
+					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.2fms',dblMaxDTime*1000,dblMaxDTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
 				else
-					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxZTime*1000,dblMaxZTimeInvSign*1000,dblPeakTime*1000));
+					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxDTime*1000,dblMaxDTimeInvSign*1000,dblPeakTime*1000));
 				end
 				hold off
 				fixfig;
@@ -333,8 +336,8 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 					hold on;
 					if intLatencyPeaks > 3,plot(dblOnset*[1 1],vecY,'r--');end
 					plot(dblPeakTime*[1 1],vecY,'g--');
-					plot(dblMaxZTime*[1 1],vecY,'b--');
-					plot(dblMaxZTimeInvSign*[1 1],vecY,'b-.');
+					plot(dblMaxDTime*[1 1],vecY,'b--');
+					plot(dblMaxDTimeInvSign*[1 1],vecY,'b-.');
 					hold off
 				end
 			end
@@ -355,21 +358,21 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,varEventTime
 	%% build optional output structure
 	if nargout > 2
 		sZETA = struct;
-		sZETA.dblZ = dblZ;
+		sZETA.dblD = dblD;
 		sZETA.dblP = dblP;
-		sZETA.dblPeakT = dblMaxZTime;
+		sZETA.dblPeakT = dblMaxDTime;
 		sZETA.intPeakIdx = intZETALoc;
 		if boolStopSupplied
 			sZETA.dblMeanD = dblMeanD;
 			sZETA.dblMeanP = dblMeanP;
 		end
 		sZETA.vecSpikeT = vecSpikeT;
-		sZETA.vecZ = vecZ;
+		sZETA.vecD = vecRealDiff;
 		sZETA.vecRealDiff = vecRealDiff;
 		sZETA.matRandDiff = matRandDiff;
 		
-		sZETA.dblZ_InvSign = dblZ_InvSign;
-		sZETA.dblPeakT_InvSign = dblMaxZTimeInvSign;
+		sZETA.dblD_InvSign = dblD_InvSign;
+		sZETA.dblPeakT_InvSign = dblMaxDTimeInvSign;
 		sZETA.intPeakIdx_InvSign = intPeakLocInvSign;
 		sZETA.dblUseMaxDur = dblUseMaxDur;
 	end

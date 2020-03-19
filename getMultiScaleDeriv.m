@@ -53,8 +53,9 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	end
 	
 	%% reorder just in case
-	[vecT,vecReorder] = sort(vecT,'ascend');
+	[vecT,vecReorder] = sort(vecT(:),'ascend');
 	vecV = vecV(vecReorder);
+	vecV = vecV(:);
 	
 	%% prepare data
 	dblMaxScale = log(max(vecT)/10) / log(dblBase);
@@ -158,5 +159,6 @@ function dblD = getD(dblScale,intS,intN,vecT,vecV)
 	intIdxMaxT = find(vecT > dblMaxEdge,1);
 	if isempty(intIdxMaxT),intIdxMaxT=intN;end
 	if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
-	dblD = (vecV(intIdxMaxT) - vecV(intIdxMinT))/(vecT(intIdxMaxT) - vecT(intIdxMinT));
+	dbl_dT = max([dblScale (vecT(intIdxMaxT) - vecT(intIdxMinT))]);
+	dblD = (vecV(intIdxMaxT) - vecV(intIdxMinT))/dbl_dT;
 end

@@ -1,15 +1,18 @@
-function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
-	%getGumbel Calculate p-value and z-score for maximum value of N samples drawn from Gaussian
-	%   [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
-	%
+function [dblP,dblZ] = getGumbelN(intN,dblX)
+	%getGumbelN Calculate p-value and z-score for maximum value of N samples drawn from Gaussian
+	%   [dblP,dblZ] = getGumbelN(intN,dblX)
+	
+	%syntax:  [dblP,dblZ] = getGumbel(intN,dblX)
 	%	input:
-	%	- dblE: mean of distribution of maximum values
-	%	- dblV: variance of distribution of maximum values
-	%	- dblX: maximum value to express in quantiles of Gumbel
+	%	- intN: sample size
+	%	- dblX: maximum value in sample
 	%
 	%	output:
-	%	- dblP; p-value for dblX (chance that sample originates from distribution given by dblE/dblV)
+	%	- dblP; p-value for dblX (chance that sample originates from Gaussian with mean 0 & variance 1
 	%	- dblZ; z-score corresponding to P
+	%
+	%Note: this function assumes the underlying distribution is mean-zero
+	%and variance 1; if this is not the case, you should rescale your values first
 	%
 	%Version history:
 	%1.0 - March 11 2020
@@ -23,6 +26,16 @@ function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
 	%https://stats.stackexchange.com/questions/9001/approximate-order-statistics-for-normal-random-variables
 	%https://en.wikipedia.org/wiki/Extreme_value_theory
 	%https://en.wikipedia.org/wiki/Gumbel_distribution
+	
+	%% calculate source statistics for N
+	%calculate mean (E(X)) for sample size N; Elfving (1947)
+	dblAlpha=pi/8;
+	fMaxE = @(N) norminv((1-dblAlpha)./((N*2)-2*dblAlpha+1));
+	dblE = -fMaxE(intN);
+	
+	%calculate approximate variance for sample size N; Baglivo (2005)
+	fMaxV = @(N) ((N) ./ (((N+1).^2).*(N+2))).*(1./((normpdf(norminv(N./(N+1)))).^2));
+	dblV = fMaxV(intN);
 	
 	%% define Gumbel parameters from mean and variance
 	%derive beta parameter from variance
