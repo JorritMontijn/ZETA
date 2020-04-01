@@ -1,6 +1,6 @@
 function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%getZeta Calculates neuronal responsiveness index zeta
-	%syntax: [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,boolVerbose)
+	%syntax: [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%	input:
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
@@ -170,6 +170,24 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		if numel(vecLatencies) < intLatencyPeaks
 			vecLatencies(end+1:intLatencyPeaks) = nan;
 		end
+		sZETA = struct;
+		sZETA.dblD = 0;
+		sZETA.dblP = 1;
+		sZETA.dblPeakT = nan;
+		sZETA.intPeakIdx = [];
+		if boolStopSupplied
+			sZETA.dblMeanD = 0;
+			sZETA.dblMeanP = 1;
+		end
+		sZETA.vecSpikeT = [];
+		sZETA.vecD = [];
+		sZETA.vecRealDiff = [];
+		sZETA.matRandDiff = [];
+		
+		sZETA.dblD_InvSign = 0;
+		sZETA.dblPeakT_InvSign = nan;
+		sZETA.intPeakIdx_InvSign = [];
+		sZETA.dblUseMaxDur = nan;
 		return
 	end
 	
@@ -310,7 +328,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 				sRate.dblOnset = dblOnset;
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime dblOnset];
 			else
-				sRate.dblOnset = [];
+				sRate.dblOnset = [nan];
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime];
 			end
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
@@ -343,7 +361,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 			end
 		else
 			%placeholder peak data
-			sRate.dblOnset = [];
+			sRate.dblOnset = [nan];
 			vecLatencies = [nan nan nan nan];
 		end
 	else

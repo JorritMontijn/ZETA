@@ -99,7 +99,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getTraceZeta(vecTraceT,vecTraceAct
 	
 	%get boolPlot
 	if ~exist('intLatencyPeaks','var') || isempty(intLatencyPeaks)
-		intLatencyPeaks = 3;
+		intLatencyPeaks = 4;
 	end
 	
 	%get boolPlot
@@ -371,7 +371,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getTraceZeta(vecTraceT,vecTraceAct
 			end
 		else
 			%placeholder peak data
-			sRate.dblOnset = [];
+			sRate.dblOnset = [nan];
 			vecLatencies = [nan nan nan nan];
 		end
 	else
