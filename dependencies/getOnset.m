@@ -28,17 +28,25 @@ function [dblOnset,dblValue] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange)
 	if ~exist('dblPeakT','var')
 		[dummy,dblPeakT] = getPeak(vecData,vecT,vecRestrictRange);
 	end
+
+	%z-score
+	vecDataZ = zscore(vecData);
+	
 	%remove time points outside restricted range
 	indRemove = vecT < vecRestrictRange(1) | vecT > vecRestrictRange(end);
 	vecT = vecT(~indRemove);
-	vecData = vecData(~indRemove);
+	vecDataZ = vecDataZ(~indRemove);
 	
 	%calculate first timepoint crossing half-height of peak 
 	[dummy,intPeakIdx]=min(abs(vecT-dblPeakT));
-	dblPeakVal = vecData(intPeakIdx);
-	dblBaseVal = vecData(1);
+	dblPeakVal = vecDataZ(intPeakIdx);
+	dblBaseVal = vecDataZ(1);
 	dblThresh = (dblPeakVal - dblBaseVal)/2 + dblBaseVal;
-	intOnsetIdx = find(vecData > dblThresh,1,'first');
+	if dblThresh > 0
+		intOnsetIdx = find(vecDataZ > dblThresh,1,'first');
+	else
+		intOnsetIdx = find(vecDataZ < dblThresh,1,'first');
+	end
 	dblOnset = vecT(intOnsetIdx);
 	dblValue = vecData(intOnsetIdx);
 	
