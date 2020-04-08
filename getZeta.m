@@ -188,6 +188,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		sZETA.dblPeakT_InvSign = nan;
 		sZETA.intPeakIdx_InvSign = [];
 		sZETA.dblUseMaxDur = nan;
+		sZETA.vecLatencyVals = [];
 		return
 	end
 	
@@ -327,11 +328,14 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 				[dblOnset,dblOnsetVal] = getOnset(vecRate,vecSpikeT,dblPeakTime,vecRestrictRange);
 				sRate.dblOnset = dblOnset;
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime dblOnset];
+				vecLatencyVals = [vecRate(intZETALoc) vecRate(intPeakLocInvSign) vecRate(intPeakLoc) dblOnsetVal];
 			else
 				sRate.dblOnset = [nan];
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime];
+				vecLatencyVals = [vecRate(intZETALoc) vecRate(intPeakLocInvSign) vecRate(intPeakLoc)];
 			end
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
+			vecLatencyVals = vecLatencyVals(1:intLatencyPeaks);
 			if intPlot > 0
 				hold on
 				scatter(dblPeakTime,vecRate(intPeakLoc),'gx');
@@ -363,14 +367,17 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 			%placeholder peak data
 			sRate.dblOnset = [nan];
 			vecLatencies = [nan nan nan nan];
+			vecLatencyVals = [nan nan nan nan];
 		end
 	else
 		vecLatencies = [];
+		vecLatencyVals = [];
 	end
 	
 	%check number of latencies
 	if numel(vecLatencies) < intLatencyPeaks
 		vecLatencies(end+1:intLatencyPeaks) = nan;
+		vecLatencyVals(end+1:intLatencyPeaks) = nan;
 	end
 	
 	%% build optional output structure
@@ -393,6 +400,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		sZETA.dblPeakT_InvSign = dblMaxDTimeInvSign;
 		sZETA.intPeakIdx_InvSign = intPeakLocInvSign;
 		sZETA.dblUseMaxDur = dblUseMaxDur;
+		sZETA.vecLatencyVals = vecLatencyVals;
 	end
 end
 
