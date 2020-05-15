@@ -1,4 +1,4 @@
-function [dblOnset,dblValue] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange)
+function [dblOnset,dblValue,dblBaseVal,dblPeakT] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange,intSwitchZ)
 	%getOnset Returns peak onset. Syntax:
 	%    [dblOnset,dblValue] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange)
 	%
@@ -17,38 +17,48 @@ function [dblOnset,dblValue] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange)
 	%Version history:
 	%1.0 - February 26 2020
 	%	Created by Jorrit Montijn
-
+%%
 	%check inputs
-	if ~exist('vecT','var')
+	if ~exist('vecT','var') || isempty(vecT)
 		vecT = 1:numel(vecData);
 	end
-	if ~exist('vecRestrictRange','var')
+	if ~exist('vecRestrictRange','var') || isempty(vecRestrictRange)
 		vecRestrictRange = [min(vecT) min(vecT)+range(vecT)/2];
 	end
-	if ~exist('dblPeakT','var')
-		[dummy,dblPeakT] = getPeak(vecData,vecT,vecRestrictRange);
+	if ~exist('intSwitchZ','var') || isempty(intSwitchZ)
+		intSwitchZ = 1;
 	end
-
+	
 	%z-score
-	vecDataZ = zscore(vecData);
+	if intSwitchZ == 1
+		vecDataZ = zscore(vecData);
+	elseif intSwitchZ == 2
+		dblMu = mean(vecData(vecT<0.02));
+		vecDataZ = (vecData - dblMu)/std(vecData);
+	else
+		vecDataZ = vecData;
+	end
+	if ~exist('dblPeakT','var') || isempty(dblPeakT)
+		[dummy,dblPeakT] = getPeak(vecDataZ,vecT,vecRestrictRange,0);
+	end
 	
 	%remove time points outside restricted range
 	indRemove = vecT < vecRestrictRange(1) | vecT > vecRestrictRange(end);
-	vecT = vecT(~indRemove);
+	vecCropT = vecT(~indRemove);
 	vecDataZ = vecDataZ(~indRemove);
 	
 	%calculate first timepoint crossing half-height of peak 
-	[dummy,intPeakIdx]=min(abs(vecT-dblPeakT));
+	[dummy,intPeakIdx]=min(abs(vecCropT-dblPeakT));
 	dblPeakVal = vecDataZ(intPeakIdx);
 	dblBaseVal = vecDataZ(1);
 	dblThresh = (dblPeakVal - dblBaseVal)/2 + dblBaseVal;
 	if dblThresh > 0
-		intOnsetIdx = find(vecDataZ > dblThresh,1,'first');
+		intOnsetIdx = find(vecDataZ >= dblThresh,1,'first');
 	else
-		intOnsetIdx = find(vecDataZ < dblThresh,1,'first');
+		intOnsetIdx = find(vecDataZ <= dblThresh,1,'first');
 	end
-	dblOnset = vecT(intOnsetIdx);
-	dblValue = vecData(intOnsetIdx);
+	dblOnset = vecCropT(intOnsetIdx);
+	dblValue = vecData(find(vecT > dblOnset,1));
 	
 	%check if empty
 	if isempty(intOnsetIdx)

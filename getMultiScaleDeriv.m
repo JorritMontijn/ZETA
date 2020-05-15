@@ -131,7 +131,12 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		grid off
 		
 		subplot(2,3,6);
-		stairs(vecT,vecRate)
+		if numel(vecT) > 10000
+			vecSubset = round(linspace(1,numel(vecT),10000));
+			plot(vecT(vecSubset),vecRate(vecSubset));
+		else
+			stairs(vecT,vecRate);
+		end
 		xlabel('Time (s)');
 		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));

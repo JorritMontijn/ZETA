@@ -1,4 +1,4 @@
-function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange)
+function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange,intSwitchZ)
 	%getPeak Returns highest peak time, width, and location. Syntax:
 	%    [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange)
 	%
@@ -27,10 +27,20 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	if ~exist('vecRestrictRange','var')
 		vecRestrictRange = [-inf inf];
 	end
+	if ~exist('intSwitchZ','var') || isempty(intSwitchZ)
+		intSwitchZ = 1;
+	end
 	
 	%z-score
-	vecDataZ = zscore(vecData);
-	
+	if intSwitchZ == 1
+		vecDataZ = zscore(vecData);
+	elseif intSwitchZ == 2
+		dblMu = mean(vecData(vecT<0.02));
+		vecDataZ = (vecData - dblMu)/std(vecData);
+	else
+		vecDataZ = vecData;
+	end
+
 	%get most prominent positive peak times
 	[vecValsPos,vecLocsPos,vecWidthPos,vecPromsPos]=findpeaks(vecDataZ);
 	%remove peaks outside window
