@@ -1,6 +1,6 @@
-function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
+function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%getZeta Calculates neuronal responsiveness index zeta
-	%syntax: [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
+	%syntax: [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
 	%	input:
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
@@ -13,24 +13,24 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 	%	- boolVerbose: boolean, switch to print progress messages (default: false)
 	%
 	%	output:
-	%	- dblZETA; Zenith of Event-based Time-locked Anomalies: FDR-corrected responsiveness z-score (i.e., >2 is significant)
+	%	- dblZetaP; p-value based on Zenith of Event-based Time-locked Anomalies
 	%	- vecLatencies; different latency estimates, number determined by intLatencyPeaks. If no peaks are detected, it returns NaNs:
 	%		1) Latency of ZETA
 	%		2) Latency of largest z-score with inverse sign to ZETA
 	%		3) Peak time of instantaneous firing rate
 	%		4) Onset time of above peak, defined as the first crossing of peak half-height
 	%	- sZETA; structure with fields:
-	%		- dblZ; uncorrected peak z-score
-	%		- dblP; p-value corresponding to zeta
+	%		- dblZETA; FDR-corrected responsiveness z-score (i.e., >2 is significant)
+	%		- dblD; temporal deviation value underlying ZETA
+	%		- dblP; p-value corresponding to ZETA
 	%		- dblPeakT; time corresponding to ZETA
 	%		- intPeakIdx; entry corresponding to ZETA
 	%		- dblMeanD; Cohen's D based on mean-rate stim/base difference
 	%		- dblMeanP; p-value based on mean-rate stim/base difference
-	%		- vecSpikeT: timestamps of spike times (corresponding to vecZ)
-	%		- vecZ; z-score for all time points corresponding to vecSpikeT
-	%		- vecRealDiff: real offset of spikes relative to uniform rate
-	%		- matRandDiff; matrix of shuffled runs with offset to uniform
-	%		- dblZ_InvSign; largest peak z-score of inverse sign to ZETA
+	%		- vecSpikeT: timestamps of spike times (corresponding to vecD)
+	%		- vecD; temporal deviation vector of data
+	%		- matRandD; baseline temporal deviation matrix of jittered data
+	%		- dblD_InvSign; largest peak of inverse sign to ZETA (i.e., -ZETA)
 	%		- dblPeakT_InvSign; time corresponding to -ZETA
 	%		- intPeakIdx_InvSign; entry corresponding to -ZETA
 	%		- dblUseMaxDur; window length used to calculate ZETA
@@ -51,21 +51,23 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 	%		- dblOnset: latency for peak onset
 	%
 	%Version history:
-	%0.9 - June 27 2019
+	%0.9 - 27 June 2019
 	%	Created by Jorrit Montijn
-	%1.0 - September 24 2019
+	%1.0 - 24 September 2019
 	%	New procedure to determine statistical significance [by JM]
-	%2.0 - January 27 2020
+	%2.0 - 27 January 2020
 	%	New peak detection procedure using multi-scale derivatives [by JM]
-	%2.1 - February 5 2020
+	%2.1 - 5 February 2020
 	%	Minor changes and bug fixes [by JM]
-	%2.2 - February 11 2020
+	%2.2 - 11 February 2020
 	%	Peak width, analytical ZETA correction [by JM]
-	%2.3 - February 26 2020
+	%2.3 - 26 February 2020
 	%	MSD-based instantaneous spiking rates, onset latency [by JM]
-	%2.4 - March 11 2020
+	%2.4 - 11 March 2020
 	%	Closed-form statistical significance using Gumbel distribution [by	JM]
-	
+	%2.5 - 27 May 2020
+	%	Standardized syntax and variable names [by JM]
+
 	%% prep data
 	%ensure orientation
 	vecSpikeTimes = vecSpikeTimes(:);
@@ -171,6 +173,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 			vecLatencies(end+1:intLatencyPeaks) = nan;
 		end
 		sZETA = struct;
+		sZETA.dblZETA = dblZETA;
 		sZETA.dblD = 0;
 		sZETA.dblP = 1;
 		sZETA.dblPeakT = nan;
@@ -181,8 +184,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		end
 		sZETA.vecSpikeT = [];
 		sZETA.vecD = [];
-		sZETA.vecRealDiff = [];
-		sZETA.matRandDiff = [];
+		sZETA.matRandD = [];
 		
 		sZETA.dblD_InvSign = 0;
 		sZETA.dblPeakT_InvSign = nan;
@@ -203,7 +205,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 	dblD = vecRealDiff(intZETALoc);
 	
 	%calculate statistical significance using Gumbel distribution
-	[dblP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
+	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
 	%fprintf('Pre-corr d=%.3f,post-corr z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	
 	%find peak of inverse sign
@@ -293,9 +295,9 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		xlabel('Time from event (s)');
 		ylabel('Offset of data from linear (s)');
 		if boolStopSupplied
-			title(sprintf('ZETA=%.3f (p=%.3f), d(Hz)=%.3f (p=%.3f)',dblZETA,dblP,dblMeanD,dblMeanP));
+			title(sprintf('ZETA=%.3f (p=%.3f), d(Hz)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
 		else
-			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblP));
+			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblZetaP));
 		end
 		fixfig
 	end
@@ -383,8 +385,9 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 	%% build optional output structure
 	if nargout > 2
 		sZETA = struct;
+		sZETA.dblZETA = dblZETA;
 		sZETA.dblD = dblD;
-		sZETA.dblP = dblP;
+		sZETA.dblP = dblZetaP;
 		sZETA.dblPeakT = dblMaxDTime;
 		sZETA.intPeakIdx = intZETALoc;
 		if boolStopSupplied
@@ -393,8 +396,7 @@ function [dblZETA,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTime
 		end
 		sZETA.vecSpikeT = vecSpikeT;
 		sZETA.vecD = vecRealDiff;
-		sZETA.vecRealDiff = vecRealDiff;
-		sZETA.matRandDiff = matRandDiff;
+		sZETA.matRandD = matRandDiff;
 		
 		sZETA.dblD_InvSign = dblD_InvSign;
 		sZETA.dblPeakT_InvSign = dblMaxDTimeInvSign;
