@@ -162,6 +162,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	if numel(vecRealDiff) < 3
+		dblZetaP = 1;
 		dblZETA = 0;
 		sZETA = [];
 		vecLatencies = [];

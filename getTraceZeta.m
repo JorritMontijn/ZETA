@@ -170,8 +170,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getTraceZeta(vecTraceT,vecTraceAc
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	if numel(vecRealDiff) < 3
-		dblZETA = 0;
-		sZETA = [];
+		dblZetaP = 1;
 		vecLatencies = [];
 		sRate = [];
 		warning([mfilename ':InsufficientSamples'],'Insufficient samples to calculate zeta');
