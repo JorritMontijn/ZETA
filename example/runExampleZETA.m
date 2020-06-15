@@ -37,7 +37,7 @@ function runExampleZETA
 	%% run the ZETA-test with specified parameters
 	%however, we can also specify the parameters ourselves
 	dblUseMaxDur = median(diff(vecStimulusStartTimes)); %median of trial-to-trial durations
-	intResampNum = 100; %100 random resamplings should give us a good enough idea if this cell is responsive. If it's close to 0.05, we should increase this #.
+	intResampNum = 50; %50 random resamplings should give us a good enough idea if this cell is responsive. If it's close to 0.05, we should increase this #.
 	intPlot = 3;%what do we want to plot?(0=nothing, 1=inst. rate only, 2=traces only, 3=raster plot as well, 4=adds latencies in raster plot)
 	intLatencyPeaks = 4; %how many latencies do we want? 1=ZETA, 2=-ZETA, 3=peak, 4=first crossing of peak half-height
 	vecRestrictRange = [0 inf];%do we want to restrict the peak detection to for example the time during stimulus? Then put [0 1] here.

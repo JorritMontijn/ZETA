@@ -150,7 +150,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		end
 		%% get random subsample
 		vecStimUseOnTime = vecEventStarts(:,1) + 2*dblUseMaxDur*(rand(size(vecEventStarts(:,1)))-0.5);
-		%vecStimUseOnTime = min(vecEventStarts(:,1)) + range(vecEventStarts)*rand(size(vecEventStarts(:,1)));
+		%vecStimUseOnTime = min(vecEventStarts(:,1)) + range(vecEventStarts)*rand(size(vecEventStarts(:,1))); %alternative shuffling with uniform random sampling across whole recording
 		
 		%get temp offset
 		[vecRandDiff,vecRandFrac,vecRandFracLinear] = ...
