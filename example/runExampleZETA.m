@@ -23,8 +23,7 @@ function runExampleZETA
 	
 	%% load stimulation information
 	sStim = sLoad.sStim;
-	vecDriftingDirection = sStim.Orientation(:); %use (:) to ensure it's a column vector
-	vecStimulusStartTimes = sStim.StimOnTime(:);
+	vecStimulusStartTimes = sStim.StimOnTime(:); %use (:) to ensure it's a column vector
 	vecStimulusStopTimes = sStim.StimOffTime(:);
 	
 	%% put stimulus start and stop times together into a [T x 2] matrix
