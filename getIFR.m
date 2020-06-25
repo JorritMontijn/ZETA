@@ -1,6 +1,6 @@
-function [vecMSD,sMSSD] = getMultiScaleSpikeDeriv(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolVerbose)
-	%getMultiScaleSpikeDeriv Returns multi-scale derivative. Syntax:
-	%   [vecMSD,sMSSD] = getMultiScaleSpikeDeriv(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolVerbose)
+function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolVerbose)
+	%getIFR Returns instaneous firing rate. Syntax:
+	%   [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolVerbose)
 	%Required input:
 	%	- vecSpikeTimes [S x 1]: spike times (s)
 	%	- vecEventStarts [T x 1]: event on times (s), or [T x 2] including event off times
@@ -15,20 +15,18 @@ function [vecMSD,sMSSD] = getMultiScaleSpikeDeriv(vecSpikeTimes,vecEventStarts,d
 	%	- boolVerbose: boolean, switch to print messages
 	%
 	%Outputs:
-	%	- vecMSprime; Multi-scale derivative
-	%	- sMSSD; structure with fields:
-	%		- vecMSD;
+	%	- vecIFR; Instantaneous firing rate
+	%	- sIFR; structure with fields:
 	%		- vecSpikeT;
-	%		- vecFracs;
-	%		- vecLinear; 
-	%		- vecDiff; 
+	%		- vecD;
+	%		- vecRate;
 	%		- vecScale; 
-	%		- matSmoothMSprime; 
-	%		- matMSprime;
 	%
 	%Version history:
 	%1.0 - January 24 2019
 	%	Created by Jorrit Montijn - split from getMultiScaleDeriv.m
+	%1.1 - June 24 2020
+	%	Syntax cleanup [by JM]
 	
 	%% set default values
 	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)
@@ -75,21 +73,14 @@ function [vecMSD,sMSSD] = getMultiScaleSpikeDeriv(vecSpikeTimes,vecEventStarts,d
 	vecDiff = vecDiff - mean(vecDiff);
 	
 	%% get multi-scale derivative
-	[vecMSD,sMSD] = getMultiScaleDeriv(vecSpikeT,vecDiff,intSmoothSd,dblMinScale,dblBase,intPlot);
+	[vecIFR,sMSD] = getMultiScaleDeriv(vecSpikeT,vecDiff,intSmoothSd,dblMinScale,dblBase,intPlot);
 	
 	%% build output
 	if nargout > 1
-		sMSSD = struct;
-		sMSSD.vecSpikeT = vecSpikeT;
-		sMSSD.vecFracs = vecFracs;
-		sMSSD.vecLinear = vecLinear;
-		sMSSD.vecDiff = vecDiff;
-		
-		sMSSD.vecMSD = sMSD.vecMSD;
-		sMSSD.vecScale = sMSD.vecScale;
-		sMSSD.matSmoothMSD = sMSD.matSmoothMSD;
-		sMSSD.matMSD = sMSD.matMSD;
-		
+		sIFR = struct;
+		sIFR.vecSpikeT = vecSpikeT;
+		sIFR.vecD = vecDiff;
+		sIFR.vecScale = sMSD.vecScale;
 	end
 end
 

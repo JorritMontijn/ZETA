@@ -21,13 +21,16 @@ function plotRaster(vecSpikes,vecTrialStarts,dblTrialDur,intPlotMaxSpikes)
 		dblTrialDur = median(diff(vecTrialStarts));
 	end
 	
-	%subselect
-	if numel(vecSpikes) > intPlotMaxSpikes
-		vecSpikes = vecSpikes(sort(randperm(numel(vecSpikes),intPlotMaxSpikes)));
-	end
-	
+
 	%get spike times in trials
 	[vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblTrialDur);
+	
+	%subselect
+	if numel(vecTrialPerSpike) > intPlotMaxSpikes
+		vecSelectSpikes = sort(randperm(numel(vecTrialPerSpike),intPlotMaxSpikes));
+		vecTrialPerSpike = vecSpikes(vecSelectSpikes);
+		vecTimePerSpike = vecTimePerSpike(vecSelectSpikes);
+	end
 	
 	%plot per trial
 	cla;

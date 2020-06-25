@@ -9,7 +9,8 @@ function runExampleZETA
 	%	Created by Jorrit Montijn
 
 	%% load data for example cell
-	sLoad = load('ExampleDataZETA.mat');
+	rng(1,'twister'); % to match Python output
+	sLoad = load('ExampleDataZETA.mat'); %loads matlab data file
 	
 	%some information about the neuron is stored in the sNeuron structure,
 	%such as whether Kilosort2 thought it was an acceptable neuron

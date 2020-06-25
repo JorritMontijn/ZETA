@@ -266,7 +266,13 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		subplot(2,3,2)
 		sOpt = struct;
 		sOpt.handleFig =-1;
-		[vecMean,vecSEM,vecWindowBinCenters] = doPEP(vecSpikeTimes,0:0.025:dblUseMaxDur,vecEventStarts(:,1),sOpt);
+		if dblUseMaxDur < 0.5
+			dblBinSize = dblUseMaxDur/20;
+		else
+			dblBinSize = 0.025;
+		end
+		vecBins = 0:dblBinSize:dblUseMaxDur;
+		[vecMean,vecSEM,vecWindowBinCenters] = doPEP(vecSpikeTimes,vecBins,vecEventStarts(:,1),sOpt);
 		errorbar(vecWindowBinCenters,vecMean,vecSEM);
 		ylim([0 max(get(gca,'ylim'))]);
 		title(sprintf('Mean spiking over trials'));
