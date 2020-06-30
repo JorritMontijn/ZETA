@@ -3,8 +3,8 @@ Repository containing ZETA functions and dependencies. For an example of how to 
  
 This repository contains three main functions:
 1) getZeta.m: Calculates the Zenith of Event-based Time-locked Anomalies (ZETA) for spike times of a single neuron.
-2) getMultiScaleDeriv.m: Calculates multi-scale derivatives for trace-based data, such as spike-time/z-score combinations that underlie ZETA.
-3) getMultiScaleSpikeDeriv.m: Wrapper function for getMultiScaleDeriv.m when the data is spike times and event times.
+2) getMultiScaleDeriv.m: Calculates instantaneous firing rates for trace-based data, such as spike-time/z-score combinations that underlie ZETA.
+3) getIFR.m: Wrapper function for getMultiScaleDeriv.m when the input data are spike times and event times.
 
 Rationale for ZETA
 
