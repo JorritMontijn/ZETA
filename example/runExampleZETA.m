@@ -26,15 +26,13 @@ function runExampleZETA
 	sStim = sLoad.sStim;
 	vecStimulusStartTimes = sStim.StimOnTime(:); %use (:) to ensure it's a column vector
 	vecStimulusStopTimes = sStim.StimOffTime(:);
-	
-	%% put stimulus start and stop times together into a [T x 2] matrix
-	matEventTimes = cat(2,vecStimulusStartTimes,vecStimulusStopTimes);
-	
+	matEventTimes = cat(2,vecStimulusStartTimes,vecStimulusStopTimes); % put stimulus start and stop times together into a [T x 2] matrix
+
 	%% run the ZETA-test with default parameters
 	%if we simply want to know if the neuron responds, no hassle, we can
 	%use this simple syntax with default parameters:
-	dblZetaP_default = getZeta(vecSpikeTimes,matEventTimes);
-
+	dblZetaP_default = getZeta(vecSpikeTimes,vecStimulusStartTimes);
+	
 	%% run the ZETA-test with specified parameters
 	%however, we can also specify the parameters ourselves
 	dblUseMaxDur = median(diff(vecStimulusStartTimes)); %median of trial-to-trial durations

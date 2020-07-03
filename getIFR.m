@@ -17,16 +17,19 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	%Outputs:
 	%	- vecIFR; Instantaneous firing rate
 	%	- sIFR; structure with fields:
-	%		- vecSpikeT;
+	%		- vecRate;
+	%		- vecT;
 	%		- vecD;
 	%		- vecRate;
 	%		- vecScale; 
 	%
 	%Version history:
-	%1.0 - January 24 2019
+	%1.0 - 24 January 2019
 	%	Created by Jorrit Montijn - split from getMultiScaleDeriv.m
-	%1.1 - June 24 2020
+	%1.1 - 24 June 2020
 	%	Syntax cleanup [by JM]
+	%1.2 - 3 July 2020
+	%	Conform to ZETA naming [by JM]
 	
 	%% set default values
 	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)
@@ -64,7 +67,8 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	end
 	
 	%get spikes in fold
-	vecSpikeT = sort(cell2vec(cellSpikeTimesPerTrial),'ascend');
+	vecSpikeT = [0;sort(cell2vec(cellSpikeTimesPerTrial),'ascend');dblUseMaxDur];
+	intSpikes = numel(vecSpikeT);
 	
 	%% get difference from uniform
 	vecFracs = linspace(0,1,numel(vecSpikeT))';
@@ -73,12 +77,14 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	vecDiff = vecDiff - mean(vecDiff);
 	
 	%% get multi-scale derivative
-	[vecIFR,sMSD] = getMultiScaleDeriv(vecSpikeT,vecDiff,intSmoothSd,dblMinScale,dblBase,intPlot);
+	dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
+	[vecIFR,sMSD] = getMultiScaleDeriv(vecSpikeT,vecDiff,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur);
 	
 	%% build output
 	if nargout > 1
 		sIFR = struct;
-		sIFR.vecSpikeT = vecSpikeT;
+		sIFR.vecRate = vecIFR;
+		sIFR.vecT = vecSpikeT;
 		sIFR.vecD = vecDiff;
 		sIFR.vecScale = sMSD.vecScale;
 	end
