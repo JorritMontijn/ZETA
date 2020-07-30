@@ -16,7 +16,7 @@ function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
 	%	Created by Jorrit Montijn
 	%
 	%Sources:
-	%Baglivo (2005), ISBN: 9780898715668
+	%Baglivo (2005)
 	%Elfving (1947), https://doi.org/10.1093/biomet/34.1-2.111
 	%Royston (1982), DOI: 10.2307/2347982
 	%https://stats.stackexchange.com/questions/394960/variance-of-normal-order-statistics
