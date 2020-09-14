@@ -216,27 +216,18 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	if boolStopSupplied
 		%% calculate mean-rate difference
-		%pre-allocate
-		vecEventStops = matEventTimes(:,2);
-		vecStimHz = zeros(intMaxRep,1);
-		vecBaseHz = zeros(intMaxRep,1);
-		dblMedianBaseDur = median(vecEventStarts(2:end) - vecEventStops(1:(end-1)));
-		
-		%go through trials to build spike time vector
-		for intEvent=1:intMaxRep
-			%get times
-			dblStartT = vecEventStarts(intEvent,1);
-			dblStopT = dblStartT + dblUseMaxDur;
-			dblPreT = dblStartT - dblMedianBaseDur;
-			
-			% build trial assignment
-			vecStimHz(intEvent) = sum(vecSpikeTimes < dblStopT & vecSpikeTimes > dblStartT)/(dblStopT - dblStartT);
-			vecBaseHz(intEvent) = sum(vecSpikeTimes < dblStartT & vecSpikeTimes > dblPreT)/dblMedianBaseDur;
-		end
+		vecRespBinsDur = sort(flat([matEventTimes(:,1) matEventTimes(:,2)]));
+		vecR = histcounts(vecSpikeTimes,vecRespBinsDur);
+		vecD = diff(vecRespBinsDur)';
+		vecMu_Dur = vecR(1:2:end)./vecD(1:2:end);
+		dblStart1 = min(vecRespBinsDur);
+		dblFirstPreDur = dblStart1 - max([0 dblStart1 - median(vecD(2:2:end))]);
+		dblR1 = sum(vecSpikeTimes > (dblStart1 - dblFirstPreDur) & vecSpikeTimes < dblStart1);
+		vecMu_Pre = [dblR1 vecR(2:2:end)]./[dblFirstPreDur vecD(2:2:end)];
 		
 		%get metrics
-		dblMeanD = mean(vecStimHz - vecBaseHz) / ( (std(vecStimHz) + std(vecBaseHz))/2);
-		[h,dblMeanP]=ttest(vecStimHz,vecBaseHz);
+		dblMeanD = mean(vecMu_Dur - vecMu_Pre) / ( (std(vecMu_Dur) + std(vecMu_Pre))/2);
+		[h,dblMeanP]=ttest(vecMu_Dur,vecMu_Pre);
 	end
 	
 	%% plot
