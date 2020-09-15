@@ -149,8 +149,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 			hTic = tic;
 		end
 		%% get random subsample
-		vecStimUseOnTime = vecEventStarts(:,1) + 2*dblUseMaxDur*(rand(size(vecEventStarts(:,1)))-0.5);
-		%vecStimUseOnTime = min(vecEventStarts(:,1)) + range(vecEventStarts)*rand(size(vecEventStarts(:,1))); %alternative shuffling with uniform random sampling across whole recording
+		vecStimUseOnTime = vecEventStarts(:,1) + 2*dblUseMaxDur*((rand(size(vecEventStarts(:,1)))-0.5)*2);
 		
 		%get temp offset
 		[vecRandDiff,vecRandFrac,vecRandFracLinear] = ...
@@ -207,7 +206,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	%calculate statistical significance using Gumbel distribution
 	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
-	%fprintf('Pre-corr d=%.3f,post-corr z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
+	%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	
 	%find peak of inverse sign
 	[dummy,intPeakLocInvSign] = max(-sign(dblD)*vecRealDiff);
@@ -300,7 +299,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		fixfig
 	end
 	
-	%% calculate MSD if significant
+	%% calculate MSD
 	if intLatencyPeaks > 0
 		%get average of multi-scale derivatives, and rescaled to instantaneous spiking rate
 		dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
