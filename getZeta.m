@@ -69,6 +69,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	Standardized syntax and variable names [by JM]
 	%2.6 - 27 Nov 2020
 	%	Improved computation time; now uses parallel bootstrapping [by JM]
+	%	In case of only requesting dblZetaP, computation is now up to 10x faster
 
 	%% prep data
 	%ensure orientation
