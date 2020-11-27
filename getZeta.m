@@ -67,6 +67,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	Closed-form statistical significance using Gumbel distribution [by	JM]
 	%2.5 - 27 May 2020
 	%	Standardized syntax and variable names [by JM]
+	%2.6 - 27 Nov 2020
+	%	Improved computation time; now uses parallel bootstrapping [by JM]
 
 	%% prep data
 	%ensure orientation
@@ -99,7 +101,11 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	%get intLatencyPeaks
 	if ~exist('intLatencyPeaks','var') || isempty(intLatencyPeaks)
-		intLatencyPeaks = 2;
+		if nargout > 1
+			intLatencyPeaks = 2;
+		else
+			intLatencyPeaks = 0;
+		end
 	end
 	
 	%get boolPlot
@@ -139,24 +145,37 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	[vecRealDiff,vecRealFrac,vecRealFracLinear] = ...
 		getTempOffset(vecSpikeT,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
 	
-	%% run bootstraps
+	%% run bootstraps; try parallel, otherwise run normal loop
 	hTic = tic;
 	matRandDiff = nan(intSpikes,intResampNum);
-	for intResampling=1:intResampNum
-		%% msg
-		if boolVerbose && toc(hTic) > 5
-			fprintf('Now at resampling %d/%d\n',intResampling,intResampNum);
-			hTic = tic;
+	vecStartOnly = vecEventStarts(:,1);
+	try
+		parfor intResampling=1:intResampNum
+			%% get random subsample
+			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
+			
+			%get temp offset
+			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
+			
+			%assign data
+			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
 		end
-		%% get random subsample
-		vecStimUseOnTime = vecEventStarts(:,1) + 2*dblUseMaxDur*((rand(size(vecEventStarts(:,1)))-0.5)*2);
-		
-		%get temp offset
-		[vecRandDiff,vecRandFrac,vecRandFracLinear] = ...
-			getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
-		
-		%assign data
-		matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
+	catch
+		for intResampling=1:intResampNum
+			%% msg
+			if boolVerbose && toc(hTic) > 5
+				fprintf('Now at resampling %d/%d\n',intResampling,intResampNum);
+				hTic = tic;
+			end
+			%% get random subsample
+			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
+			
+			%get temp offset
+			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
+			
+			%assign data
+			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
+		end
 	end
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)

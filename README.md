@@ -14,3 +14,11 @@ Neurophysiological studies depend on a reliable quantification of whether and wh
 Finally, ZETA’s timescale-, parameter- and binning-free nature allowed us to implement a ZETA-derived algorithm (using multi-scale derivatives) to calculate peak onset and offset latencies in neuronal spike trains with theoretically unlimited temporal resolution. 
 
 Please send any questions or comments to j.montijn at nin.knaw.nl.
+
+
+Dependencies
+getZeta.m requires the following Mathworks toolboxes to work:
+- Signal Processing Toolbox
+- Image Processing Toolbox
+- Statistics and Machine Learning Toolbox
+- (Optional: Parallel Computing Toolbox to reduce computation time)

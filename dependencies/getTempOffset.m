@@ -1,6 +1,6 @@
 function [vecThisDiff,vecThisFrac,vecThisFracLinear] = ...
 			getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur)
-	%getTempOffset Calculate temporal offset vectors across folds and offsets. Syntax:
+	%getTempOffset Calculate temporal offset vectors. Syntax:
 	%[vecThisDiff,vecThisFrac,vecThisFracLinear] = ...
 	%	getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur)
 	%
