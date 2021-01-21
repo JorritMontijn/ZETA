@@ -14,7 +14,7 @@ function [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTria
 	%	Added overlap by using dblMaxDur [by JM]
 	
 	%check inputs
-	if ~exist('dblMaxDur','var')
+	if nargin < 3
 		dblMaxDur = [];
 	end
 	

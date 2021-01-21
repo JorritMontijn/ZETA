@@ -70,6 +70,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%2.6 - 27 Nov 2020
 	%	Improved computation time; now uses parallel bootstrapping [by JM]
 	%	In case of only requesting dblZetaP, computation is now up to 10x faster
+	%2.7 - 21 Jan 2021
+	%	Improved computation time, using calcZeta/getSpikeT subfunctions [by JM]
 
 	%% prep data
 	%ensure orientation
@@ -119,71 +121,16 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		boolVerbose = false;
 	end
 	
-	%% build onset/offset vectors
+	%% get zeta
 	vecEventStarts = matEventTimes(:,1);
-	
-	%% prepare interpolation points
-	%pre-allocate
-	intMaxRep = size(matEventTimes,1);
-	cellSpikeTimesPerTrial = cell(intMaxRep,1);
-	
-	%go through trials to build spike time vector
-	for intEvent=1:intMaxRep
-		%get times
-		dblStartT = vecEventStarts(intEvent,1);
-		dblStopT = dblStartT + dblUseMaxDur;
-		
-		% build trial assignment
-		cellSpikeTimesPerTrial{intEvent} = vecSpikeTimes(vecSpikeTimes < dblStopT & vecSpikeTimes > dblStartT) - dblStartT;
-	end
-	
-	%get spikes in fold
-	vecSpikeT = [0;sort(cell2vec(cellSpikeTimesPerTrial),'ascend');dblUseMaxDur];
-	intSpikes = numel(vecSpikeT);
-	
-	%% run normal
-	%get data
-	[vecRealDiff,vecRealFrac,vecRealFracLinear] = ...
-		getTempOffset(vecSpikeT,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
-	
-	%% run bootstraps; try parallel, otherwise run normal loop
-	hTic = tic;
-	matRandDiff = nan(intSpikes,intResampNum);
-	vecStartOnly = vecEventStarts(:,1);
-	try
-		parfor intResampling=1:intResampNum
-			%% get random subsample
-			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
-			
-			%get temp offset
-			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
-			
-			%assign data
-			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
-		end
-	catch
-		for intResampling=1:intResampNum
-			%% msg
-			if boolVerbose && toc(hTic) > 5
-				fprintf('Now at resampling %d/%d\n',intResampling,intResampNum);
-				hTic = tic;
-			end
-			%% get random subsample
-			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
-			
-			%get temp offset
-			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
-			
-			%assign data
-			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
-		end
-	end
-	
+	[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+		calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum);
+
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	sRate = [];
 	sZETA = [];
 	vecLatencies = [];
-	if numel(vecRealDiff) < 3
+	if isnan(intZETALoc)
 		dblZetaP = 1;
 		dblZETA = 0;
 		warning([mfilename ':InsufficientSamples'],'Insufficient samples to calculate zeta');
@@ -214,19 +161,9 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		return
 	end
 	
-	%find highest peak and retrieve value
-	vecMaxRandD = max(abs(matRandDiff),[],1);
-	dblRandMu = mean(vecMaxRandD);
-	dblRandVar = var(vecMaxRandD);
-	[dblPosD,intZETALoc]= max(abs(vecRealDiff));
-	
 	%get location
 	dblMaxDTime = vecSpikeT(intZETALoc);
 	dblD = vecRealDiff(intZETALoc);
-	
-	%calculate statistical significance using Gumbel distribution
-	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
-	%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	
 	%find peak of inverse sign
 	[dummy,intPeakLocInvSign] = max(-sign(dblD)*vecRealDiff);
