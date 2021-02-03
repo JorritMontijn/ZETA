@@ -170,7 +170,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	dblMaxDTimeInvSign = vecSpikeT(intPeakLocInvSign);
 	dblD_InvSign = vecRealDiff(intPeakLocInvSign);
 	
-	if boolStopSupplied
+	if boolStopSupplied && (nargout > 2 || intPlot > 1)
 		%% calculate mean-rate difference
 		vecRespBinsDur = sort(flat([matEventTimes(:,1) matEventTimes(:,2)]));
 		vecR = histcounts(vecSpikeTimes,vecRespBinsDur);
@@ -259,7 +259,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%% calculate MSD
 	if intLatencyPeaks > 0
 		%get average of multi-scale derivatives, and rescaled to instantaneous spiking rate
-		dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
+		dblMeanRate = (numel(vecSpikeT)/(dblUseMaxDur*numel(vecEventStarts)));
 		[vecRate,sRate] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,[],[],[],intPlot,dblMeanRate,dblUseMaxDur);
 	end
 	
@@ -288,6 +288,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime];
 				vecLatencyVals = [vecRate(intZETALoc) vecRate(intPeakLocInvSign) vecRate(intPeakLoc)];
 			end
+			intLatencyPeaks = min([intLatencyPeaks numel(vecLatencies)]);
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
 			vecLatencyVals = vecLatencyVals(1:intLatencyPeaks);
 			if intPlot > 0

@@ -3,6 +3,19 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	%[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
 	%	calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum)
 
+	%% check inputs and pre-allocate error output
+	vecSpikeT = [];
+	vecRealDiff = [];
+	vecRealFrac = [];
+	vecRealFracLinear = [];
+	matRandDiff = [];
+	dblZetaP = 1;
+	dblZETA = 0;
+	intZETALoc = nan;
+	if numel(vecSpikeTimes) < 3
+		return;
+	end
+	
 	%% prepare interpolation points
 	vecSpikeT = getSpikeT(vecSpikeTimes,vecEventStarts,dblUseMaxDur);
 	
@@ -10,6 +23,9 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	%get data
 	[vecRealDiff,vecRealFrac,vecRealFracLinear] = ...
 		getTempOffset(vecSpikeT,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
+	if numel(vecRealDiff) < 3
+		return
+	end
 	
 	%% run bootstraps; try parallel, otherwise run normal loop
 	intSpikes = numel(vecRealDiff);
@@ -40,13 +56,6 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	end
 	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
-	dblZetaP = 1;
-	dblZETA = 0;
-	intZETALoc = nan;
-	if numel(vecRealDiff) < 3
-		return
-	end
-	
 	%find highest peak and retrieve value
 	vecMaxRandD = max(abs(matRandDiff),[],1);
 	dblRandMu = mean(vecMaxRandD);
