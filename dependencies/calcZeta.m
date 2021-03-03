@@ -12,6 +12,11 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	dblZetaP = 1;
 	dblZETA = 0;
 	intZETALoc = nan;
+	
+	%% reduce spikes
+	dblStartT = max([vecSpikeTimes(1) min(vecEventStarts(:,1))-dblUseMaxDur*5]);
+	dblStopT = max(vecEventStarts(:,1))+dblUseMaxDur*5;
+	vecSpikeTimes(vecSpikeTimes < dblStartT | vecSpikeTimes > dblStopT) = [];
 	if numel(vecSpikeTimes) < 3
 		return;
 	end

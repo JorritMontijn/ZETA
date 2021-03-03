@@ -257,7 +257,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	end
 	
 	%% calculate MSD
-	if intLatencyPeaks > 0 || nargout > 3
+	if intLatencyPeaks > 0 || nargout > 3 || intPlot > 0
 		%get average of multi-scale derivatives, and rescaled to instantaneous spiking rate
 		dblMeanRate = (numel(vecSpikeT)/(dblUseMaxDur*numel(vecEventStarts)));
 		[vecRate,sRate] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,[],[],[],intPlot,dblMeanRate,dblUseMaxDur);
