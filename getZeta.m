@@ -89,7 +89,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	%trial dur
 	if ~exist('dblUseMaxDur','var') || isempty(dblUseMaxDur)
-		dblUseMaxDur = median(diff(matEventTimes(:,1)));
+		dblUseMaxDur = min(diff(matEventTimes(:,1)));
 	end
 	
 	%get resampling num
@@ -125,7 +125,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	vecEventStarts = matEventTimes(:,1);
 	[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
 		calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum);
-
+	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	sRate = [];
 	sZETA = [];

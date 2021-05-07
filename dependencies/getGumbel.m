@@ -1,4 +1,4 @@
-function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
+function [dblP,dblZ,dblMode,dblBeta] = getGumbel(dblE,dblV,dblX)
 	%getGumbel Calculate p-value and z-score for maximum value of N samples drawn from Gaussian
 	%   [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
 	%
@@ -24,12 +24,17 @@ function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
 	%https://en.wikipedia.org/wiki/Extreme_value_theory
 	%https://en.wikipedia.org/wiki/Gumbel_distribution
 	
+	%% define constants
+	%define Euler-Mascheroni constant
+	dblEulerMascheroni = 0.5772156649015328606065120900824; %vpa(eulergamma)
+	
+	%define apery's constant
+	%dblApery = 1.202056903159594285399738161511449990764986292;
+	
 	%% define Gumbel parameters from mean and variance
 	%derive beta parameter from variance
 	dblBeta = (sqrt(6).*sqrt(dblV))./(pi);
-	
-	%define Euler-Mascheroni constant
-	dblEulerMascheroni = 0.5772156649015328606065120900824; %vpa(eulergamma)
+	%dblSkewness = (12*sqrt(6)*dblApery)/(pi.^3);
 	
 	%derive mode from mean, beta and E-M constant
 	dblMode = dblE - dblBeta.*dblEulerMascheroni;
@@ -40,6 +45,7 @@ function [dblP,dblZ] = getGumbel(dblE,dblV,dblX)
 	%% calculate output variables
 	%calculate cum dens at X
 	dblGumbelCDF = fGumbelCDF(dblX);
+	
 	%define p-value
 	dblP = (1-dblGumbelCDF);
 	%transform to output z-score

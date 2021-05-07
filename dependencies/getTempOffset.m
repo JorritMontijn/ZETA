@@ -9,7 +9,7 @@ function [vecThisDiff,vecThisFrac,vecThisFracLinear] = ...
 	%% get temp diff vector
 	%pre-allocate
 	vecThisSpikeTimes = unique(getSpikeT(vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur));
-	vecThisSpikeFracs = linspace(0,1,numel(vecThisSpikeTimes))';
+	vecThisSpikeFracs = linspace(1/numel(vecThisSpikeTimes),1,numel(vecThisSpikeTimes))';
 	vecThisFrac = interp1(vecThisSpikeTimes,vecThisSpikeFracs,vecSpikeT);
 	
 	%get linear fractions

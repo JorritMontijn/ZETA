@@ -14,6 +14,7 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	intZETALoc = nan;
 	
 	%% reduce spikes
+	if size(vecEventStarts,2)>2,error([mfilename ':IncorrectMatrixForm'],'Incorrect input form for vecEventStarts; size must be [m x 1] or [m x 2]');end
 	dblStartT = max([vecSpikeTimes(1) min(vecEventStarts(:,1))-dblUseMaxDur*5]);
 	dblStopT = max(vecEventStarts(:,1))+dblUseMaxDur*5;
 	vecSpikeTimes(vecSpikeTimes < dblStartT | vecSpikeTimes > dblStopT) = [];
@@ -31,6 +32,7 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	if numel(vecRealDiff) < 3
 		return
 	end
+	vecRealDiff = vecRealDiff - mean(vecRealDiff);
 	
 	%% run bootstraps; try parallel, otherwise run normal loop
 	intSpikes = numel(vecRealDiff);
@@ -65,10 +67,10 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	vecMaxRandD = max(abs(matRandDiff),[],1);
 	dblRandMu = mean(vecMaxRandD);
 	dblRandVar = var(vecMaxRandD);
-	[dblPosD,intZETALoc]= max(abs(vecRealDiff));
+	[dblMaxD,intZETALoc]= max(abs(vecRealDiff));
 	
 	%calculate statistical significance using Gumbel distribution
-	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblPosD);
+	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblMaxD);
 	%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	
 end

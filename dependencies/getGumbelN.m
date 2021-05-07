@@ -30,8 +30,10 @@ function [dblP,dblZ] = getGumbelN(intN,dblX)
 	%% calculate source statistics for N
 	%calculate mean (E(X)) for sample size N; Elfving (1947)
 	dblAlpha=pi/8;
-	fMaxE = @(N) norminv((1-dblAlpha)./((N*2)-2*dblAlpha+1));
-	dblE = -fMaxE(intN);
+	%fMaxE = @(N) norminv((1-dblAlpha)./((N*2)-2*dblAlpha+1));
+	%dblE = -fMaxE(intN);
+	fMaxE = @(N) norminv((N-dblAlpha)./(N-2*dblAlpha+1));
+	dblE = fMaxE(intN);
 	
 	%calculate approximate variance for sample size N; Baglivo (2005)
 	fMaxV = @(N) ((N) ./ (((N+1).^2).*(N+2))).*(1./((normpdf(norminv(N./(N+1)))).^2));
