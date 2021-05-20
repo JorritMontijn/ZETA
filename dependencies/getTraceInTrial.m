@@ -1,6 +1,6 @@
-function [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vecEventStarts,dblSamplingFreq,dblUseMaxDur)
+function [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vecEventStarts,dblSamplingInterval,dblUseMaxDur)
 	%getTraceInTrial Builds common timeframe
-	%syntax: [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vecEventStarts,dblSamplingFreq,dblUseMaxDur)
+	%syntax: [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vecEventStarts,dblSamplingInterval,dblUseMaxDur)
 	%	input:
 	%	- vecSpikes; spike times (s)
 	%	- vecTrialStarts: trial start times (s)
@@ -11,7 +11,7 @@ function [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vec
 	
 	%% prepare
 	%build common timeframe
-	vecRefT = (dblSamplingFreq/2):dblSamplingFreq:dblUseMaxDur;
+	vecRefT = (dblSamplingInterval/2):dblSamplingInterval:dblUseMaxDur;
 	
 	%pre-allocate
 	intTrialNum = numel(vecEventStarts);
