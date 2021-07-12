@@ -2,7 +2,11 @@ function vecOut = cell2vec(cellIn)
 	%cell2vec Transforms cell array to vector. Syntax:
 	%   vecOut = cell2vec(cellIn)
 	
-	intElements = sum(cellfun(@numel,cellIn),'all');
+    try
+        intElements = sum(cellfun(@numel,cellIn),'all');
+    catch
+        intElements = sum(cellfun(@numel,cellIn(:)));
+    end
 	vecOut = nan(intElements,1);
 	intElCounter = 1;
 	for intCell=1:numel(cellIn)
