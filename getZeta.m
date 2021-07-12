@@ -123,9 +123,12 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	
 	%% get zeta
 	vecEventStarts = matEventTimes(:,1);
-	[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-		calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum);
-	
+	if numel(vecEventStarts) > 1 && numel(vecSpikeTimes) > 1 && ~isempty(dblUseMaxDur) && dblUseMaxDur>0
+		[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+			calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum);
+	else
+		intZETALoc = nan;
+	end
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	sRate = [];
 	sZETA = [];
@@ -183,7 +186,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		
 		%get metrics
 		dblMeanD = mean(vecMu_Dur - vecMu_Pre) / ( (std(vecMu_Dur) + std(vecMu_Pre))/2);
-		[h,dblMeanP]=ttest(vecMu_Dur,vecMu_Pre);
+		[h,dblMeanP,ci,stats]=ttest(vecMu_Dur,vecMu_Pre);
 	end
 	
 	%% plot
