@@ -1,6 +1,6 @@
-function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
+function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile)
 	%getZeta Calculates neuronal responsiveness index zeta
-	%syntax: [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose)
+	%syntax: [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile)
 	%	input:
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
@@ -10,7 +10,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	- intPlot: integer, plotting switch (0=none, 1=inst. rate only, 2=traces only, 3=raster plot as well, 4=adds latencies in raster plot) (default: 0)
 	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (1-4) (default: 2)
 	%	- vecRestrictRange: temporal range within which to restrict onset/peak latencies (default: [-inf inf])
-	%	- boolVerbose: boolean, switch to print progress messages (default: false)
+	%	- boolDirectQuantile; boolean, switch to use the empirical
+	%							null-distribution rather than the Gumbel approximation (default: false)
 	%
 	%	output:
 	%	- dblZetaP; p-value based on Zenith of Event-based Time-locked Anomalies
@@ -72,7 +73,9 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	In case of only requesting dblZetaP, computation is now up to 10x faster
 	%2.7 - 21 Jan 2021
 	%	Improved computation time, using calcZeta/getSpikeT subfunctions [by JM]
-
+	%2.8 - 23 Sept 2021
+	%	Added switch to use empirical null distribution for significance calculation [by JM]
+	
 	%% prep data
 	%ensure orientation
 	vecSpikeTimes = vecSpikeTimes(:);
@@ -97,7 +100,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		intResampNum = 100;
 	end
 	
-	%get boolPlot
+	%get intPlot
 	if ~exist('intPlot','var') || isempty(intPlot)
 		intPlot = 0;
 	end
@@ -111,21 +114,21 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		end
 	end
 	
-	%get boolPlot
+	%get vecRestrictRange
 	if ~exist('vecRestrictRange','var') || isempty(vecRestrictRange)
 		vecRestrictRange = [-inf inf];
 	end
 
-	%get boolVerbose
-	if ~exist('boolVerbose','var') || isempty(boolVerbose)
-		boolVerbose = false;
+	%get boolDirectQuantile
+	if ~exist('boolDirectQuantile','var') || isempty(boolDirectQuantile)
+		boolDirectQuantile = false;
 	end
 	
 	%% get zeta
 	vecEventStarts = matEventTimes(:,1);
 	if numel(vecEventStarts) > 1 && numel(vecSpikeTimes) > 1 && ~isempty(dblUseMaxDur) && dblUseMaxDur>0
 		[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-			calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum);
+			calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile);
 	else
 		intZETALoc = nan;
 	end

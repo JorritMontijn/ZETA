@@ -1,4 +1,4 @@
-function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum)
+function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile)
 	%calcZeta Calculates neuronal responsiveness index zeta
 	%[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
 	%	calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum)
@@ -12,6 +12,9 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	dblZetaP = 1;
 	dblZETA = 0;
 	intZETALoc = nan;
+	if ~exist('boolDirectQuantile','var') || isempty(boolDirectQuantile)
+		boolDirectQuantile = false;
+	end
 	
 	%% reduce spikes
 	if size(vecEventStarts,2)>2,error([mfilename ':IncorrectMatrixForm'],'Incorrect input form for vecEventStarts; size must be [m x 1] or [m x 2]');end
@@ -69,9 +72,17 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	dblRandVar = var(vecMaxRandD);
 	[dblMaxD,intZETALoc]= max(abs(vecRealDiff));
 	
-	%calculate statistical significance using Gumbel distribution
-	[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblMaxD);
-	%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
-	
+	if boolDirectQuantile
+		%calculate statistical significance using empirical quantiles
+		%define p-value
+		dblZetaP = 1 - (sum(dblMaxD>vecMaxRandD)/(1+numel(vecMaxRandD)));
+		
+		%transform to output z-score
+		dblZETA = -norminv(dblZetaP/2);
+	else
+		%calculate statistical significance using Gumbel distribution
+		[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblMaxD);
+		%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
+	end
 end
 

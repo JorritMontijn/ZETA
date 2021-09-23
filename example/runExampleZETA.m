@@ -6,7 +6,9 @@
 %Version history:
 %1.0 - 15 June 2020
 %	Created by Jorrit Montijn
-
+%1.1 - 23 Sept 2021
+%	Added switch to use empirical null distribution for significance calculation [by JM]
+	
 %% load data for example cell
 rng(1,'twister'); % to match Python output
 sLoad = load('ExampleDataZETA.mat'); %loads matlab data file
@@ -44,7 +46,8 @@ intResampNum = 50; %50 random resamplings should give us a good enough idea if t
 intPlot = 3;%what do we want to plot?(0=nothing, 1=inst. rate only, 2=traces only, 3=raster plot as well, 4=adds latencies in raster plot)
 intLatencyPeaks = 4; %how many latencies do we want? 1=ZETA, 2=-ZETA, 3=peak, 4=first crossing of peak half-height
 vecRestrictRange = [0 inf];%do we want to restrict the peak detection to for example the time during stimulus? Then put [0 1] here.
-boolVerbose = true;%displays the progress if it takes >5 seconds
+boolDirectQuantile = false;%if true; uses the empirical null distribution rather than the Gumbel approximation. Note that in this case the accuracy of your p-value is limited by the # of resamplings
 
 %then run ZETA with those parameters
-[dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolVerbose);
+[dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile);
+
