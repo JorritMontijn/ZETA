@@ -1,7 +1,7 @@
 # ZETA
 Repository containing ZETA functions and dependencies. For an example of how to use the code, check runExampleZETA.m in the /example/ subfolder. Your output should look like the .tif in the same directory.
 
-A pre-print article about the ZETA-test and the instantaneous firing rate can be found here: https://www.biorxiv.org/content/10.1101/2020.09.24.311118v1
+The article describing ZETA has been published in eLife: https://elifesciences.org/articles/71969
  
 This repository contains three main functions:
 1) getZeta.m: Calculates the Zenith of Event-based Time-locked Anomalies (ZETA) for spike times of a single neuron. Outputs a p-value.
@@ -22,3 +22,6 @@ getZeta.m requires the following Mathworks toolboxes to work:
 - Image Processing Toolbox
 - Statistics and Machine Learning Toolbox
 - (Optional: Parallel Computing Toolbox to reduce computation time)
+
+
+![zeta_image](https://user-images.githubusercontent.com/15422591/135059690-2d7f216a-726e-4080-a4ec-2b3fae78e10c.png)
