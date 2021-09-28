@@ -1,6 +1,6 @@
 function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange,intSwitchZ)
 	%getPeak Returns highest peak time, width, and location. Syntax:
-	%    [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange)
+	%    [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecData,vecT,vecRestrictRange,intSwitchZ)
 	%
 	%Required input:
 	%	- vecData [N x 1]: values
@@ -8,6 +8,7 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	%Optional inputs:
 	%	- vecT [N x 1]: timestamps corresponding to vecData (default: [1:N])
 	%	- vecRestrictRange: restrict peak to lie within vecRestrictRange(1) and vecRestrictRange(end)
+	%	- intSwitchZ: sets type of normalization; 0=raw,1=z-scored
 	%
 	%Outputs:
 	%	- dblPeakTime: time of peak
@@ -35,7 +36,7 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	if intSwitchZ == 1
 		vecDataZ = zscore(vecData);
 	elseif intSwitchZ == 2
-		dblMu = mean(vecData(vecT<0.02));
+		dblMu = mean(vecData((vecT/max(vecT))<0.02));
 		vecDataZ = (vecData - dblMu)/std(vecData);
 	else
 		vecDataZ = vecData;

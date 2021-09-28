@@ -1,4 +1,4 @@
-function [dblOnset,dblValue,dblBaseVal,dblPeakT] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange,intSwitchZ)
+function [dblOnset,dblValue,dblBaseVal,dblPeakT,dblPeakVal] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange,intSwitchZ)
 	%getOnset Returns peak onset. Syntax:
 	%    [dblOnset,dblValue] = getOnset(vecData,vecT,dblPeakT,vecRestrictRange)
 	%
@@ -23,7 +23,7 @@ function [dblOnset,dblValue,dblBaseVal,dblPeakT] = getOnset(vecData,vecT,dblPeak
 		vecT = 1:numel(vecData);
 	end
 	if ~exist('vecRestrictRange','var') || isempty(vecRestrictRange)
-		vecRestrictRange = [min(vecT) min(vecT)+range(vecT)/2];
+		vecRestrictRange = [min(vecT) min(vecT)+range(vecT)];
 	end
 	if ~exist('intSwitchZ','var') || isempty(intSwitchZ)
 		intSwitchZ = 1;
