@@ -74,7 +74,7 @@ for intPlot=1:numel(hFig.Children)
 	[vecStart,vecStop]=regexp(strTitle,'[=].*?[m][s]');
 	for intEntry=1:numel(vecStart)
 		strOldNumber=hFig.Children(intPlot).Title.String((vecStart(intEntry)+1):(vecStop(intEntry)-2));
-		strTitle = strrep(strTitle,strOldNumber,num2str(str2double(strOldNumber)-dblBaselineDurationMs));
+		strTitle = strrep(strTitle,strcat('=',strOldNumber,'ms'),strcat('=',num2str(str2double(strOldNumber)-dblBaselineDurationMs),'ms'));
 	end
 	hFig.Children(intPlot).Title.String = strTitle;
 end
