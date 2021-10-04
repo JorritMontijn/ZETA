@@ -60,8 +60,8 @@ matEventTimesWithPrecedingBaseline = matEventTimes - dblBaselineDuration;
 %then run ZETA with the new times
 [dblZetaP_pb,vecLatencies_pb,sZETA_pb,sRate_pb] = getZeta(vecSpikeTimes,matEventTimesWithPrecedingBaseline,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile);
 
-%however, the zeta function of course won't be able to tell the difference,
-%so all timings are off by 500 ms.
+%% however, the zeta function of course won't be able to tell the difference, so all timings are off by 500 ms.
+%here we change the figure labels/titles (you can ignore this bit if you're not using the figure)
 dblBaselineDurationMs = dblBaselineDuration*1000;
 drawnow;hFig = gcf;
 for intPlot=1:numel(hFig.Children)
@@ -79,7 +79,7 @@ for intPlot=1:numel(hFig.Children)
 	hFig.Children(intPlot).Title.String = strTitle;
 end
 
-%adjust times
+%here we adjust the times in the variables that getZeta returns
 vecLatencies_pb = vecLatencies_pb - dblBaselineDuration;
 sZETA_pb.vecSpikeT = sZETA_pb.vecSpikeT - dblBaselineDuration;
 sRate_pb.vecT = sRate_pb.vecT - dblBaselineDuration;
