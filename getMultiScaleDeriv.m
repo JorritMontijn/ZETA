@@ -116,7 +116,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	%% plot
 	if intPlot == 1
 		stairs(vecT,vecRate)
-		xlabel('Time (s)');
+		xlabel('Time after event (s)');
 		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));
 		fixfig
@@ -137,7 +137,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		else
 			stairs(vecT,vecRate);
 		end
-		xlabel('Time (s)');
+		xlabel('Time after event (s)');
 		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));
 		fixfig

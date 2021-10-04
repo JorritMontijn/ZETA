@@ -51,3 +51,37 @@ boolDirectQuantile = false;%if true; uses the empirical null distribution rather
 %then run ZETA with those parameters
 [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile);
 
+%% by popular demand: using a baseline that precedes the onset
+%putting the baseline before the stimulus can be done by simply subtracting
+%the baseline duration from the event times:
+dblBaselineDuration = 0.5;
+matEventTimesWithPrecedingBaseline = matEventTimes - dblBaselineDuration;
+
+%then run ZETA with the new times
+[dblZetaP_pb,vecLatencies_pb,sZETA_pb,sRate_pb] = getZeta(vecSpikeTimes,matEventTimesWithPrecedingBaseline,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile);
+
+%however, the zeta function of course won't be able to tell the difference,
+%so all timings are off by 500 ms.
+dblBaselineDurationMs = dblBaselineDuration*1000;
+drawnow;hFig = gcf;
+for intPlot=1:numel(hFig.Children)
+	%adjust x-ticks
+	if contains(hFig.Children(intPlot).XLabel.String,'Time ')
+		set(hFig.Children(intPlot),'xticklabel',cellfun(@(x) num2str(str2double(x)-dblBaselineDuration),get(hFig.Children(intPlot),'xticklabel'),'UniformOutput',false));
+	end
+	%adjust timings in title
+	strTitle = hFig.Children(intPlot).Title.String;
+	[vecStart,vecStop]=regexp(strTitle,'[=].*?[m][s]');
+	for intEntry=1:numel(vecStart)
+		strOldNumber=hFig.Children(intPlot).Title.String((vecStart(intEntry)+1):(vecStop(intEntry)-2));
+		strTitle = strrep(strTitle,strOldNumber,num2str(str2double(strOldNumber)-dblBaselineDurationMs));
+	end
+	hFig.Children(intPlot).Title.String = strTitle;
+end
+
+%adjust times
+vecLatencies_pb = vecLatencies_pb - dblBaselineDuration;
+sZETA_pb.vecSpikeT = sZETA_pb.vecSpikeT - dblBaselineDuration;
+sRate_pb.vecT = sRate_pb.vecT - dblBaselineDuration;
+sRate_pb.dblPeakTime = sRate_pb.dblPeakTime - dblBaselineDuration;
+sRate_pb.dblOnset = sRate_pb.dblOnset - dblBaselineDuration;

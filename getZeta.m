@@ -208,7 +208,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		if intPlot > 2
 			subplot(2,3,1)
 			plotRaster(vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur,10000);
-			xlabel('Time from event (s)');
+			xlabel('Time after event (s)');
 			ylabel('Trial #');
 			title('Spike raster plot');
 			fixfig;
@@ -229,7 +229,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		errorbar(vecWindowBinCenters,vecMean,vecSEM);
 		ylim([0 max(get(gca,'ylim'))]);
 		title(sprintf('Mean spiking over trials'));
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Mean spiking rate (Hz)');
 		fixfig
 		
@@ -238,7 +238,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		hold on
 		plot(vecSpikeT,vecRealFracLinear,'color',[0.5 0.5 0.5]);
 		title(sprintf('Real data'));
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Fractional position of spike in trial');
 		fixfig
 		
@@ -252,7 +252,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		scatter(dblMaxDTime,vecRealDiff(intZETALoc),'bx');
 		scatter(dblMaxDTimeInvSign,vecRealDiff(intPeakLocInvSign),'b*');
 		hold off
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Offset of data from linear (s)');
 		if boolStopSupplied
 			title(sprintf('ZETA=%.3f (p=%.3f), d(Hz)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
