@@ -79,6 +79,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%% prep data
 	%ensure orientation
 	vecSpikeTimes = vecSpikeTimes(:);
+	assert(isnumeric(vecSpikeTimes),[mfilename ':WrongInputType'], 'Supplied spike time variable is not a numeric vector');
 	
 	%calculate stim/base difference?
 	boolStopSupplied = false;
