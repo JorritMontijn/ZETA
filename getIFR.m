@@ -1,6 +1,6 @@
-function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
+function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
 	%getIFR Returns instaneous firing rate. Syntax:
-	%   [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
+	%   [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
 	%Required input:
 	%	- vecSpikeTimes [S x 1]: spike times (s)
 	%	- vecEventStarts [T x 1]: event on times (s), or [T x 2] including event off times
@@ -14,7 +14,8 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	%	- intPlot: integer, plotting switch (0=none, 1=plot)
 	%
 	%Outputs:
-	%	- vecIFR; Instantaneous firing rate
+	%	- vecTime; Time points corresponding to rates in vecRate
+	%	- vecRate; Instantaneous firing rate in Hz
 	%	- sIFR; structure with fields:
 	%		- vecRate;
 	%		- vecTime;
@@ -52,12 +53,12 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	end
 	
 	%% prepare normalized spike times
-	vecSpikeT = getSpikeT(vecSpikeTimes,vecEventStarts,dblUseMaxDur);
-	intSpikes = numel(vecSpikeT);
+	vecTime = getSpikeT(vecSpikeTimes,vecEventStarts,dblUseMaxDur);
+	intSpikes = numel(vecTime);
 	
 	%% get difference from uniform
 	vecRealDiff = ...
-		getTempOffset(vecSpikeT,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
+		getTempOffset(vecTime,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
 	if numel(vecRealDiff) < 3
 		return
 	end
@@ -65,13 +66,13 @@ function [vecIFR,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmo
 	%% get multi-scale derivative
 	intMaxRep = size(vecEventStarts,1);
 	dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
-	[vecIFR,sMSD] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur);
+	[vecRate,sMSD] = getMultiScaleDeriv(vecTime,vecRealDiff,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur);
 	
 	%% build output
 	if nargout > 1
 		sIFR = struct;
-		sIFR.vecRate = vecIFR;
-		sIFR.vecTime = vecSpikeT;
+		sIFR.vecRate = vecRate;
+		sIFR.vecTime = vecTime;
 		sIFR.vecDiff = vecRealDiff;
 		sIFR.vecScale = sMSD.vecScale;
 	end
