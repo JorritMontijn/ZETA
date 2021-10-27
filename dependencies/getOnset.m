@@ -17,7 +17,8 @@ function [dblOnset,dblValue,dblBaseVal,dblPeakT,dblPeakVal] = getOnset(vecData,v
 	%Version history:
 	%1.0 - February 26 2020
 	%	Created by Jorrit Montijn
-%%
+	
+	%%
 	%check inputs
 	if ~exist('vecT','var') || isempty(vecT)
 		vecT = 1:numel(vecData);
@@ -50,7 +51,7 @@ function [dblOnset,dblValue,dblBaseVal,dblPeakT,dblPeakVal] = getOnset(vecData,v
 	%calculate first timepoint crossing half-height of peak 
 	[dummy,intPeakIdx]=min(abs(vecCropT-dblPeakT));
 	dblPeakVal = vecDataZ(intPeakIdx);
-	dblBaseVal = vecDataZ(1);
+	dblBaseVal = median(vecDataZ);
 	dblThresh = (dblPeakVal - dblBaseVal)/2 + dblBaseVal;
 	if dblThresh > 0
 		intOnsetIdx = find(vecDataZ >= dblThresh,1,'first');
