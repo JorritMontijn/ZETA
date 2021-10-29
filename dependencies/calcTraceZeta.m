@@ -1,10 +1,11 @@
-function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
-	%calcZeta Calculates neuronal responsiveness index zeta
-	%[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-	%	calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile)
-
+function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+		calcTraceZeta(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingFreq,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
+	%calcTraceZeta Calculates neuronal responsiveness index zeta
+	%[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+	%	calcTraceZeta(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingFreq,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
+	
 	%% check inputs and pre-allocate error output
-	vecSpikeT = [];
+	vecRefT = [];
 	vecRealDiff = [];
 	vecRealFrac = [];
 	vecRealFracLinear = [];
@@ -12,30 +13,20 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	dblZetaP = 1;
 	dblZETA = 0;
 	intZETALoc = nan;
-	if ~exist('boolDirectQuantile','var') || isempty(boolDirectQuantile)
-		boolDirectQuantile = false;
-	end
 	
-	%% reduce spikes
+	%% reduce data
 	if size(vecEventStarts,2)>2,error([mfilename ':IncorrectMatrixForm'],'Incorrect input form for vecEventStarts; size must be [m x 1] or [m x 2]');end
-	dblStartT = max([vecSpikeTimes(1) min(vecEventStarts(:,1))-dblUseMaxDur*5*dblJitterSize]);
+	dblStartT = max([vecTraceT(1) min(vecEventStarts(:,1))-dblUseMaxDur*5*dblJitterSize]);
 	dblStopT = max(vecEventStarts(:,1))+dblUseMaxDur*5*dblJitterSize;
-	vecSpikeTimes(vecSpikeTimes < dblStartT | vecSpikeTimes > dblStopT) = [];
-	if numel(vecSpikeTimes) < 3
+	indRemoveEntries = vecTraceT < dblStartT | vecTraceT > dblStopT;
+	vecTraceT(indRemoveEntries) = [];
+	if numel(vecTraceT) < 3
 		return;
 	end
 	
-	%% prepare interpolation points
-	vecSpikeT = getSpikeT(vecSpikeTimes,vecEventStarts,dblUseMaxDur);
-	
-	%% run normal
-	%get data
-	[vecRealDiff,vecRealFrac,vecRealFracLinear] = ...
-		getTempOffset(vecSpikeT,vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur);
-	if numel(vecRealDiff) < 3
-		return
-	end
-	vecRealDiff = vecRealDiff - mean(vecRealDiff);
+	%% get trial responses
+	[vecRealDiff,vecRealFrac,vecRealFracLinear,vecRefT] = ...
+		getTraceOffset(vecTraceT,vecTraceAct,vecEventStarts(:,1),dblSamplingFreq,dblUseMaxDur);
 	
 	%% run bootstraps; try parallel, otherwise run normal loop
 	intSpikes = numel(vecRealDiff);
@@ -47,7 +38,7 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 			vecStimUseOnTime = vecStartOnly + dblJitterSize*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
 			
 			%get temp offset
-			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
+			vecRandDiff = getTraceOffset(vecTraceT,vecTraceAct,vecStimUseOnTime,dblSamplingFreq,dblUseMaxDur);
 			
 			%assign data
 			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
@@ -55,10 +46,10 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	catch
 		for intResampling=1:intResampNum
 			%% get random subsample
-			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
+			vecStimUseOnTime = vecStartOnly + dblJitterSize*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
 			
 			%get temp offset
-			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
+			vecRandDiff = getTraceOffset(vecTraceT,vecTraceAct,vecStimUseOnTime,dblSamplingFreq,dblUseMaxDur);
 			
 			%assign data
 			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
@@ -84,5 +75,6 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 		[dblZetaP,dblZETA] = getGumbel(dblRandMu,dblRandVar,dblMaxD);
 		%fprintf('Pre-correction d=%.3f,post-correction z=%.3f (p=%.3f)\n',dblD,dblZETA,dblP);
 	end
+	
 end
 

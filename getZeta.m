@@ -1,6 +1,6 @@
-function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile)
+function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTimes,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile,dblJitterSize)
 	%getZeta Calculates neuronal responsiveness index zeta
-	%syntax: [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile)
+	%syntax: [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,intPlot,intLatencyPeaks,vecRestrictRange,boolDirectQuantile,dblJitterSize)
 	%	input:
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
@@ -12,6 +12,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	- vecRestrictRange: temporal range within which to restrict onset/peak latencies (default: [-inf inf])
 	%	- boolDirectQuantile; boolean, switch to use the empirical
 	%							null-distribution rather than the Gumbel approximation (default: false)
+	%	- dblJitterSize; scalar, sets the temporal jitter window relative to dblUseMaxDur (default: 2)
 	%
 	%	output:
 	%	- dblZetaP; p-value based on Zenith of Event-based Time-locked Anomalies
@@ -21,7 +22,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%		3) Peak time of instantaneous firing rate
 	%		4) Onset time of above peak, defined as the first crossing of peak half-height
 	%	- sZETA; structure with fields:
-	%		- dblZETA; FDR-corrected responsiveness z-score (i.e., >2 is significant)
+	%		- dblZETA; responsiveness z-score (i.e., >2 is significant)
 	%		- dblD; temporal deviation value underlying ZETA
 	%		- dblP; p-value corresponding to ZETA
 	%		- dblPeakT; time corresponding to ZETA
@@ -75,6 +76,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	Improved computation time, using calcZeta/getSpikeT subfunctions [by JM]
 	%2.8 - 23 Sept 2021
 	%	Added switch to use empirical null distribution for significance calculation [by JM]
+	%2.9 - 29 Oct 2021
+	%	Added option to change the jitter size [by JM]
 	
 	%% prep data
 	%ensure orientation
@@ -125,14 +128,20 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		boolDirectQuantile = false;
 	end
 	
+	%get dblJitterSize
+	if ~exist('dblJitterSize','var') || isempty(dblJitterSize)
+		dblJitterSize = 2;
+	end
+	
 	%% get zeta
 	vecEventStarts = matEventTimes(:,1);
 	if numel(vecEventStarts) > 1 && numel(vecSpikeTimes) > 1 && ~isempty(dblUseMaxDur) && dblUseMaxDur>0
 		[vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-			calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile);
+			calcZeta(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
 	else
 		intZETALoc = nan;
 	end
+	
 	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
 	sRate = [];
 	sZETA = [];
