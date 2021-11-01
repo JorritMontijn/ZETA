@@ -46,7 +46,7 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 		dblUseMaxDur = median(diff(vecEventStarts(:,1)));
 	end
 	if ~exist('intPlot','var') || isempty(intPlot)
-		intPlot = 0;
+		intPlot = 1;
 	end
 	if size(vecEventStarts,2) > 2
 		vecEventStarts = vecEventStarts';

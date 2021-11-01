@@ -31,8 +31,7 @@ matEventTimes = cat(2,vecStimulusStartTimes,vecStimulusStopTimes); % put stimulu
 
 %% calculate instantaneous firing rate without performing the ZETA-test
 %if we simply want to plot the neuron's response, we can use:
-[vecRate,sIFR] = getIFR(vecSpikeTimes,vecStimulusStartTimes);
-vecTimes = sIFR.vecT;
+[vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecStimulusStartTimes);
 
 %% run the ZETA-test with default parameters
 %if we simply want to know if the neuron responds, no hassle, we can
