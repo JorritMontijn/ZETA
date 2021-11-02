@@ -207,13 +207,22 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		%plot maximally 50 traces
 		intPlotIters = min([size(matRandDiff,2) 50]);
 		
-		%make maximized figure
-		figure
+		%maximize figure
+		figure;
 		drawnow;
-		jFig = get(handle(gcf), 'JavaFrame');
-		jFig.setMaximized(true);
-		figure(gcf);
-		drawnow;
+		try
+			%try new method
+			h = handle(gcf);
+			h.WindowState = 'maximized';
+		catch
+			%try old method with javaframe
+			sWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+			drawnow;
+			jFig = get(handle(gcf), 'JavaFrame');
+			jFig.setMaximized(true);
+			drawnow;
+			warning(sWarn);
+		end
 		
 		if intPlot > 2
 			subplot(2,3,1)
