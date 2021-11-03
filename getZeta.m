@@ -52,6 +52,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%		Additionally, it will return peak onset latency (first crossing of peak half-height) using getOnset.m:
 	%		- dblOnset: latency for peak onset
 	%
+	
 	%Version history:
 	%0.9 - 27 June 2019
 	%	Created by Jorrit Montijn
@@ -78,6 +79,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	Added switch to use empirical null distribution for significance calculation [by JM]
 	%2.9 - 29 Oct 2021
 	%	Added option to change the jitter size [by JM]
+	%2.10 - 3 Nov 2021
+	%	Fixed figure maximization in new matlab versions that deprecated javaframe functionality [by JM]
 	
 	%% prep data
 	%ensure orientation
@@ -211,19 +214,21 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		figure;
 		drawnow;
 		try
-			%try new method
-			h = handle(gcf);
-			h.WindowState = 'maximized';
+			try
+				%try new method
+				h = handle(gcf);
+				h.WindowState = 'maximized';
+			catch
+				%try old method with javaframe
+				sWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+				drawnow;
+				jFig = get(handle(gcf), 'JavaFrame');
+				jFig.setMaximized(true);
+				drawnow;
+				warning(sWarn);
+			end
 		catch
-			%try old method with javaframe
-			sWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-			drawnow;
-			jFig = get(handle(gcf), 'JavaFrame');
-			jFig.setMaximized(true);
-			drawnow;
-			warning(sWarn);
 		end
-		
 		if intPlot > 2
 			subplot(2,3,1)
 			plotRaster(vecSpikeTimes,vecEventStarts(:,1),dblUseMaxDur,10000);
