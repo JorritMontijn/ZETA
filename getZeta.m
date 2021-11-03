@@ -52,6 +52,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%		Additionally, it will return peak onset latency (first crossing of peak half-height) using getOnset.m:
 	%		- dblOnset: latency for peak onset
 	%
+	%v2.10 - 3 Nov 2021
 	
 	%Version history:
 	%0.9 - 27 June 2019
