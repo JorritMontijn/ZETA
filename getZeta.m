@@ -5,13 +5,13 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%	- vecSpikeTimes [S x 1]: spike times (in seconds)
 	%	- vecEventTimes [T x 1]: event on times (s), or [T x 2] including event off times to calculate mean-rate difference
 	%	- dblUseMaxDur: float (s), window length for calculating ZETA: ignore all spikes beyond this duration after event onset
-	%								[default: median of event onset to event onset]
+	%								[default: minimum of all event onsets to next event onset]
 	%	- intResampNum: integer, number of resamplings (default: 100)
 	%	- intPlot: integer, plotting switch (0=none, 1=inst. rate only, 2=traces only, 3=raster plot as well, 4=adds latencies in raster plot) (default: 0)
 	%	- intLatencyPeaks: integer, maximum number of latency peaks to return (1-4) (default: 2)
 	%	- vecRestrictRange: temporal range within which to restrict onset/peak latencies (default: [-inf inf])
-	%	- boolDirectQuantile; boolean, switch to use the empirical
-	%							null-distribution rather than the Gumbel approximation (default: false)
+	%	- boolDirectQuantile; boolean, switch to use the empirical null-distribution rather than the
+	%								Gumbel approximation (default: false) [Note: requires many resamplings!]
 	%	- dblJitterSize; scalar, sets the temporal jitter window relative to dblUseMaxDur (default: 2)
 	%
 	%	output:
@@ -68,7 +68,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	%2.3 - 26 February 2020
 	%	MSD-based instantaneous spiking rates, onset latency [by JM]
 	%2.4 - 11 March 2020
-	%	Closed-form statistical significance using Gumbel distribution [by	JM]
+	%	Statistical significance using Gumbel approximation [by	JM]
 	%2.5 - 27 May 2020
 	%	Standardized syntax and variable names [by JM]
 	%2.6 - 27 Nov 2020
@@ -146,7 +146,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		intZETALoc = nan;
 	end
 	
-	%% calculate measure of effect size (for equal n, d' equals Cohen's d)
+	%% build placeholder outputs
 	sRate = [];
 	sZETA = [];
 	vecLatencies = [];
@@ -181,6 +181,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		return
 	end
 	
+	%% extract real outputs
 	%get location
 	dblMaxDTime = vecSpikeT(intZETALoc);
 	dblD = vecRealDiff(intZETALoc);
@@ -190,8 +191,8 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 	dblMaxDTimeInvSign = vecSpikeT(intPeakLocInvSign);
 	dblD_InvSign = vecRealDiff(intPeakLocInvSign);
 	
+	%% calculate mean-rate difference with t-test
 	if boolStopSupplied && (nargout > 2 || intPlot > 1)
-		%% calculate mean-rate difference
 		vecRespBinsDur = sort(flat([matEventTimes(:,1) matEventTimes(:,2)]));
 		vecR = histcounts(vecSpikeTimes,vecRespBinsDur);
 		vecD = diff(vecRespBinsDur)';
@@ -220,7 +221,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 				h = handle(gcf);
 				h.WindowState = 'maximized';
 			catch
-				%try old method with javaframe
+				%try old method with javaframe (deprecated as of R2021)
 				sWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
 				drawnow;
 				jFig = get(handle(gcf), 'JavaFrame');
@@ -287,16 +288,16 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		fixfig
 	end
 	
-	%% calculate MSD
+	%% calculate instantaneous firing rates
 	if intLatencyPeaks > 0 || nargout > 3 || intPlot > 0
 		%get average of multi-scale derivatives, and rescaled to instantaneous spiking rate
 		dblMeanRate = (numel(vecSpikeT)/(dblUseMaxDur*numel(vecEventStarts)));
 		[vecRate,sRate] = getMultiScaleDeriv(vecSpikeT,vecRealDiff,[],[],[],intPlot,dblMeanRate,dblUseMaxDur);
 	end
 	
-	%% calculate MSD statistics
+	%% calculate IFR statistics
 	if ~isempty(sRate) && intLatencyPeaks > 0
-		%get MSD peak
+		%get IFR peak
 		[dblPeakRate,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecPeakStartStopIdx] = getPeak(vecRate,vecSpikeT,vecRestrictRange);
 		sRate.dblPeakRate = dblPeakRate;
 		sRate.dblPeakTime = dblPeakTime;
