@@ -53,7 +53,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%get resampling num
 	if ~exist('intResampNum','var') || isempty(intResampNum)
-		intResampNum = 100;
+		intResampNum = 250;
 	end
 	
 	%get boolPlot
@@ -125,8 +125,8 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%% plot
 	if intPlot
-		%plot maximally 50 traces
-		intPlotIters = min([size(matRandDiff,2) 50]);
+		%plot maximally 100 traces
+		intPlotIters = min([size(matRandDiff,2) 100]);
 		
 		%make maximized figure
 		figure
@@ -136,8 +136,9 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		figure(gcf);
 		drawnow;
 		
-		if intPlot == 2
-			subplot(2,3,1)
+		if intPlot > 1
+			[vecRefT,matTracePerTrial] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingFreq,dblUseMaxDur);
+ 			subplot(2,3,1)
 			imagesc(vecRefT,1:size(matTracePerTrial,1),matTracePerTrial);
 			colormap(hot);
 			xlabel('Time from event (s)');
@@ -177,15 +178,13 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 			plot(vecRefT,matRandDiff(:,intOffset),'Color',[0.5 0.5 0.5]);
 		end
 		plot(vecRefT,vecRealDiff,'Color',lines(1));
-		scatter(dblMaxZTime,vecRealDiff(intPeakLoc),'bx');
-		scatter(dblMaxZTimeInvSign,vecRealDiff(intPeakLocInvSign),'b*');
 		hold off
 		xlabel('Time from event (s)');
 		ylabel('Offset of data from linear (s)');
 		if boolStopSupplied
-			title(sprintf('ZETA=%.3f (p=%.3f), d(\mu)=%.3f (p=%.3f)',dblZETA,dblP,dblMeanD,dblMeanP));
+			title(sprintf('ZETA=%.3f (p=%.3f), z(mean)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
 		else
-			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblP));
+			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblZetaP));
 		end
 		fixfig
 		

@@ -246,7 +246,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		sOpt = struct;
 		sOpt.handleFig =-1;
 		if dblUseMaxDur < 0.5
-			dblBinSize = dblUseMaxDur/20;
+			dblBinSize = dblUseMaxDur/40;
 		else
 			dblBinSize = 0.025;
 		end
