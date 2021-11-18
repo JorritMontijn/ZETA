@@ -34,7 +34,9 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	%% prep data
 	%ensure orientation
 	vecTraceT = vecTraceT(:);
+	[vecTraceT,vecReorder] = sort(vecTraceT);
 	vecTraceAct = vecTraceAct(:);
+	vecTraceAct = vecTraceAct(vecReorder);
 	
 	%calculate stim/base difference?
 	boolStopSupplied = false;
@@ -98,14 +100,14 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		%go through trials to build spike time vector
 		for intEvent=1:intMaxRep
 			%% get original times
-			dblStartT = vecEventStarts(intEvent,1);
-			dblStopT = dblStartT+dblUseMaxDur;
-			dblPreT = dblStartT - dblMedianBaseDur;
+			dblStimStartT = vecEventStarts(intEvent);
+			dblStimStopT = vecEventStops(intEvent);
+			dblBaseStopT = dblStimStartT + dblUseMaxDur;
 			
-			intStartT = max([1 find(vecTraceT > dblStartT,1) - 1]);
-			intStopT = min([intTimeNum find(vecTraceT > dblStopT,1) + 1]);
-			intPreT = max([1 find(vecTraceT > dblPreT,1) - 1]);
-			vecSelectFramesBase = intPreT:(intStartT-1);
+			intStartT = max([1 find(vecTraceT > dblStimStartT,1) - 1]);
+			intStopT = min([intTimeNum find(vecTraceT > dblStimStopT,1) + 1]);
+			intEndT = min([intTimeNum find(vecTraceT > dblBaseStopT,1) + 1]);
+			vecSelectFramesBase = (intStopT+1):intEndT;
 			vecSelectFramesStim = intStartT:intStopT;
 			
 			%% get data
@@ -118,8 +120,8 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		end
 		
 		%get metrics
-		dblMeanD = abs(nanmean(vecStimAct - vecBaseAct)) / ( (nanstd(vecStimAct) + std(vecBaseAct))/2);
 		indUseTrials = ~isnan(vecStimAct) & ~isnan(vecBaseAct);
+		dblMeanD = abs(mean(vecStimAct(indUseTrials) - vecBaseAct(indUseTrials))) / std(vecStimAct(indUseTrials) - vecBaseAct(indUseTrials));
 		[h,dblMeanP]=ttest(vecStimAct(indUseTrials),vecBaseAct(indUseTrials));
 	end
 	
@@ -182,7 +184,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		xlabel('Time from event (s)');
 		ylabel('Offset of data from linear (s)');
 		if boolStopSupplied
-			title(sprintf('ZETA=%.3f (p=%.3f), z(mean)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
+			title(sprintf('ZETA=%.3f (p=%.3f), d(mean)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
 		else
 			title(sprintf('ZETA=%.3f (p=%.3f)',dblZETA,dblZetaP));
 		end

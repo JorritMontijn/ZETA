@@ -205,6 +205,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		%get metrics
 		dblMeanD = mean(vecMu_Dur - vecMu_Pre) / ( (std(vecMu_Dur) + std(vecMu_Pre))/2);
 		[h,dblMeanP,ci,stats]=ttest(vecMu_Dur,vecMu_Pre);
+		dblMeanZ = -norminv(dblMeanP/2);
 	end
 	
 	%% plot
@@ -376,7 +377,7 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		sZETA.dblPeakT = dblMaxDTime;
 		sZETA.intPeakIdx = intZETALoc;
 		if boolStopSupplied
-			sZETA.dblMeanD = dblMeanD;
+			sZETA.dblMeanZ = dblMeanZ;
 			sZETA.dblMeanP = dblMeanP;
 		end
 		sZETA.vecSpikeT = vecSpikeT;
