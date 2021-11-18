@@ -13,7 +13,7 @@
 	vecThisFrac = cumsum(vecMeanTrace) / sum(vecMeanTrace);
 	
 	%get linear fractions
-	vecThisFracLinear = linspace(median(vecMeanTrace),sum(vecMeanTrace),numel(vecMeanTrace))' / sum(vecMeanTrace);
+	vecThisFracLinear = linspace(mean(vecMeanTrace),sum(vecMeanTrace),numel(vecMeanTrace))' / sum(vecMeanTrace);
 	
 	%assign data
 	vecThisDiff = vecThisFrac - vecThisFracLinear;

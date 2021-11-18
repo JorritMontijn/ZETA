@@ -70,11 +70,11 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%get dblJitterSize
 	if ~exist('dblJitterSize','var') || isempty(dblJitterSize)
-		dblJitterSize = 2;
+		dblJitterSize = 1;
 	end
 	
-	%sampling frequency
-	dblSamplingFreq = median(diff(vecTraceT));
+	%sampling interval
+	dblSamplingInterval = median(diff(vecTraceT));
 	
 	%% build onset/offset vectors
 	vecEventStarts = matEventTimes(:,1);
@@ -82,7 +82,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%% gettacezeta
 	[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-		calcTraceZeta(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingFreq,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
+		calcTraceZeta2(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
 	
 	%get location
 	dblMaxDTime = vecRefT(intZETALoc);
@@ -139,7 +139,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		drawnow;
 		
 		if intPlot > 1
-			[vecRefT,matTracePerTrial] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingFreq,dblUseMaxDur);
+			[vecRefT,matTracePerTrial] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur);
  			subplot(2,3,1)
 			imagesc(vecRefT,1:size(matTracePerTrial,1),matTracePerTrial);
 			colormap(hot);
