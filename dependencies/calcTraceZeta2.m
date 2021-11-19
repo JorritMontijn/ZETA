@@ -17,11 +17,12 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	%% reduce data
 	if size(vecEventStarts,2)>2,error([mfilename ':IncorrectMatrixForm'],'Incorrect input form for vecEventStarts; size must be [m x 1] or [m x 2]');end
 	%discard leading/lagging data
+	vecEventStarts = vecEventStarts(:,1);
 	dblPreUse = -dblUseMaxDur*((dblJitterSize-1)/2);
 	dblPostUse = dblUseMaxDur*((dblJitterSize+1)/2);
 	
-	dblStartT = min(vecEventStarts(:,1)) + dblPreUse*2;
-	dblStopT = max(vecEventStarts(:,1)) + dblPostUse*2;
+	dblStartT = min(vecEventStarts) + dblPreUse*2;
+	dblStopT = max(vecEventStarts) + dblPostUse*2;
 	indRemoveEntries = (vecTraceT < dblStartT) | (vecTraceT > dblStopT);
 	vecTraceT(indRemoveEntries) = [];
 	vecTraceAct(indRemoveEntries) = [];
@@ -29,7 +30,7 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	vecWideT = (dblPreUse+dblSamplingInterval/2):dblSamplingInterval:dblPostUse;
 	intT0 = find(vecWideT>=0,1);
 	intSamples = numel(vecWideT);
-	intTrials = numel(vecEventStarts(:,1));
+	intTrials = numel(vecEventStarts);
 	
 	%stitch trials
 	[vecRefT2,matWideTrace] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts+dblPreUse,dblSamplingInterval,dblPostUse-dblPreUse);

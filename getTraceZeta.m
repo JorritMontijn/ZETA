@@ -208,5 +208,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		sZETA.vecTraceT = vecTraceT;
 		sZETA.vecD = vecRealDiff;
 		sZETA.matRandD = matRandDiff;
+		sZETA.vecMeanBase = vecStimAct;
+		sZETA.vecMeanStim = vecBaseAct;
 	end
 end
