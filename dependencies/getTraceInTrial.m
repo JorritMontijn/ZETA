@@ -37,6 +37,4 @@ function [vecRefT,matTracePerTrial] = getTraceInTrial(vecTimestamps,vecTrace,vec
 		%get real fractions for training set
 		matTracePerTrial(intTrial,:) = interp1(vecUseTimes,vecUseTrace,vecUseInterpT);
 	end
-	
 end
-

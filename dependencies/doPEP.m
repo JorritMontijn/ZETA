@@ -46,7 +46,7 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 	else
 		intType = 1;
 		
-		warning([mfilename ':WrongSyntax'],'Number of window points is larger than spikes, check syntax is: [vecMean,vecSEM] = doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)');
+		warning([mfilename ':WrongSyntax'],'Number of window points is larger than spikes, check syntax is: doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)');
 	end
 	
 	

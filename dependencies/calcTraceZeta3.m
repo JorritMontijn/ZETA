@@ -1,5 +1,5 @@
 function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-		calcTraceZeta2(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
+		calcTraceZeta3(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
 	%calcTraceZeta Calculates neuronal responsiveness index zeta
 	%[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
 	%	calcTraceZeta(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize)
@@ -21,24 +21,31 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	dblPreUse = -dblUseMaxDur*((dblJitterSize-1)/2);
 	dblPostUse = dblUseMaxDur*((dblJitterSize+1)/2);
 	
-	dblStartT = min(vecEventStarts) + dblPreUse*2;
-	dblStopT = max(vecEventStarts) + dblPostUse*2;
+	dblStartT = min(vecEventStarts) + dblPreUse*2 - dblJitterSize*dblUseMaxDur;
+	dblStopT = max(vecEventStarts) + dblPostUse*2 + dblJitterSize*dblUseMaxDur;
 	indRemoveEntries = (vecTraceT < dblStartT) | (vecTraceT > dblStopT);
 	vecTraceT(indRemoveEntries) = [];
 	vecTraceAct(indRemoveEntries) = [];
+	%calculate reference time
+	intTrials = numel(vecEventStarts);
 	
 	%stitch trials
-	[vecPseudoT,vecPseudoTrace,vecPseudoStartT] = getPseudoTimeSeries(vecTraceT,vecTraceAct,vecEventStarts+dblPreUse,dblPostUse-dblPreUse);
-	vecPseudoTrace = vecPseudoTrace - min(vecPseudoTrace(:));
-	if numel(vecPseudoT) < 3
+	vecTimestamps = vecTraceT;
+	vecData = vecTraceAct;
+	vecEventT = vecEventStarts+dblPreUse;
+	dblWindowDur = dblPostUse-dblPreUse;
+	[vecPseudoTime,vecPseudoData,vecPseudoStartT] = getPseudoTimeSeries(vecTimestamps,vecData,vecEventT,dblWindowDur);
+	vecPseudoData = vecPseudoData - min(vecPseudoData);
+			
+	%old
+	if numel(vecPseudoTime) < 3
 		return;
 	end
 	
 	%% get trial responses
 	[vecRealDiff,vecRealFrac,vecRealFracLinear,vecRefT] = ...
-		getTraceOffset(vecPseudoT,vecPseudoTrace,vecPseudoStartT',dblSamplingInterval,dblUseMaxDur);
+		getTraceOffset3(vecPseudoTime,vecPseudoData,vecPseudoStartT',[],dblUseMaxDur);
 	intSamples = numel(vecRealDiff);
-	intTrials = numel(vecPseudoStartT);
 	
 	%% run bootstraps; try parallel, otherwise run normal loop
 	matRandDiff = nan(intSamples,intResampNum);
@@ -54,7 +61,7 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 			vecStimUseOnTime = vecStartOnly + matJitterPerTrial(:,intResampling);
 			
 			%get temp offset
-			vecRandDiff = getTraceOffset(vecPseudoT,vecPseudoTrace,vecStimUseOnTime,dblSamplingInterval,dblUseMaxDur);
+			vecRandDiff = getTraceOffset3(vecPseudoTime,vecPseudoData,vecStimUseOnTime,vecRefT,dblUseMaxDur);
 			
 			%assign data
 			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
@@ -66,8 +73,10 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 			vecStimUseOnTime = vecStartOnly + matJitterPerTrial(:,intResampling);
 			
 			%get temp offset
-			vecRandDiff = getTraceOffset(vecPseudoT,vecPseudoTrace,vecStimUseOnTime,dblSamplingInterval,dblUseMaxDur);
-			
+			vecRandDiff = getTraceOffset3(vecPseudoTime,vecPseudoData,vecStimUseOnTime,vecRefT,dblUseMaxDur);
+			if any(isnan(vecRandDiff))
+				pause
+			end
 			%assign data
 			matRandDiff(:,intResampling) = vecRandDiff - mean(vecRandDiff);
 		end

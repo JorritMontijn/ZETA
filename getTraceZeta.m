@@ -1,4 +1,4 @@
-function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dblUseMaxDur,intResampNum,intPlot,boolDirectQuantile,dblJitterSize)
+function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dblUseMaxDur,intResampNum,intPlot,boolDirectQuantile,dblJitterSize,boolUseSuperResolution)
 	%getTraceZeta Calculates neuronal responsiveness index zeta for traces
 	%syntax: [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,vecEventTimes,dblUseMaxDur,intResampNum,intPlot,boolDirectQuantile,dblJitterSize)
 	%	input:
@@ -73,6 +73,11 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		dblJitterSize = 1;
 	end
 	
+	%get boolUseSuperResolution
+	if ~exist('boolUseSuperResolution','var') || isempty(boolUseSuperResolution)
+		boolUseSuperResolution = false;
+	end
+	
 	%sampling interval
 	dblSamplingInterval = median(diff(vecTraceT));
 	
@@ -81,9 +86,13 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	vecEventStops = matEventTimes(:,2);
 	
 	%% gettacezeta
-	[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
-		calcTraceZeta2(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
-	
+	if boolUseSuperResolution == 0
+		[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+			calcTraceZeta2(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
+	elseif boolUseSuperResolution == 1
+		[vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP,dblZETA,intZETALoc] = ...
+			calcTraceZeta3(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur,intResampNum,boolDirectQuantile,dblJitterSize);
+	end
 	%get location
 	dblMaxDTime = vecRefT(intZETALoc);
 	dblD = vecRealDiff(intZETALoc);
@@ -139,9 +148,9 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		drawnow;
 		
 		if intPlot > 1
-			[vecRefT,matTracePerTrial] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur);
+			[vecRefT2,matTracePerTrial] = getTraceInTrial(vecTraceT,vecTraceAct,vecEventStarts,dblSamplingInterval,dblUseMaxDur);
  			subplot(2,3,1)
-			imagesc(vecRefT,1:size(matTracePerTrial,1),matTracePerTrial);
+			imagesc(vecRefT2,1:size(matTracePerTrial,1),matTracePerTrial);
 			colormap(hot);
 			xlabel('Time from event (s)');
 			ylabel('Trial #');
