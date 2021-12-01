@@ -18,8 +18,8 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	if size(vecEventStarts,2)>2,error([mfilename ':IncorrectMatrixForm'],'Incorrect input form for vecEventStarts; size must be [m x 1] or [m x 2]');end
 	%discard leading/lagging data
 	vecEventStarts = vecEventStarts(:,1);
-	dblPreUse = -dblUseMaxDur*((dblJitterSize-1)/2);
-	dblPostUse = dblUseMaxDur*((dblJitterSize+1)/2);
+	dblPreUse = -dblUseMaxDur*dblJitterSize;
+	dblPostUse = dblUseMaxDur*(dblJitterSize+1);
 	
 	dblStartT = min(vecEventStarts) + dblPreUse*2;
 	dblStopT = max(vecEventStarts) + dblPostUse*2;
@@ -28,7 +28,7 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	vecTraceAct(indRemoveEntries) = [];
 	
 	%stitch trials
-	[vecPseudoT,vecPseudoTrace,vecPseudoStartT] = getPseudoTimeSeries(vecTraceT,vecTraceAct,vecEventStarts+dblPreUse,dblPostUse-dblPreUse);
+	[vecPseudoT,vecPseudoTrace,vecPseudoStartT] = getPseudoTimeSeries(vecTraceT,vecTraceAct,vecEventStarts,dblUseMaxDur);
 	vecPseudoTrace = vecPseudoTrace - min(vecPseudoTrace(:));
 	if numel(vecPseudoT) < 3
 		return;
@@ -43,7 +43,9 @@ function [vecRefT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZetaP
 	%% run bootstraps; try parallel, otherwise run normal loop
 	matRandDiff = nan(intSamples,intResampNum);
 	vecStartOnly = vecPseudoStartT(:);
-	vecJitterPerTrial = dblJitterSize*linspace(dblUseMaxDur/intTrials,dblUseMaxDur,intTrials)';
+	%vecJitterPerTrial = dblJitterSize*linspace(dblUseMaxDur/intTrials,dblUseMaxDur,intTrials)'; %original
+	%vecJitterPerTrial = dblJitterSize*linspace(-dblUseMaxDur,dblUseMaxDur,intTrials)'; %new; double width, same as zeta
+	vecJitterPerTrial = dblJitterSize*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2); %same as zeta
 	matJitterPerTrial = nan(intTrials,intResampNum);
 	for intResampling=1:intResampNum
 		matJitterPerTrial(:,intResampling) = vecJitterPerTrial(randperm(numel(vecJitterPerTrial)));

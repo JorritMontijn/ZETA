@@ -18,9 +18,22 @@ function [vecPseudoTime,vecPseudoData,vecPseudoStartT] = getPseudoTimeSeries(vec
 	%run
 	for intTrial=1:intTrials
 		dblEventT = vecEventT(intTrial);
-		vecEligibleSamples = (find(vecTimestamps > dblEventT,1)-1):(find(vecTimestamps > (dblEventT+dblWindowDur),1));
+		intStartSample = (find(vecTimestamps > dblEventT,1)-1);
+		intEndSample = (find(vecTimestamps > (dblEventT+dblWindowDur),1));
+		if isempty(intEndSample)
+			intEndSample = intStartSample;
+		end
+		vecEligibleSamples = intStartSample:intEndSample;
 		indRemSamples = (vecEligibleSamples <= 0) | (vecEligibleSamples > intSamples);
 		vecUseSamples = vecEligibleSamples(~indRemSamples);
+		
+		%check if beginning or end
+		if intTrial==1
+			vecUseSamples = 1:vecUseSamples(end);
+		end
+		if intTrial==intTrials
+			vecUseSamples = vecUseSamples(1):intSamples;
+		end
 		
 		vecUseT = vecTimestamps(vecUseSamples);
 		indOverlap = (vecUseSamples <= intLastUsedSample);
@@ -28,6 +41,7 @@ function [vecPseudoTime,vecPseudoData,vecPseudoStartT] = getPseudoTimeSeries(vec
 			vecUseSamples = vecUseSamples(~indOverlap);
 			vecUseT = vecTimestamps(vecUseSamples);
 		end
+		
 		
 		if isempty(vecUseSamples)
 			vecLocalPseudoT = [];

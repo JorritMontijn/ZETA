@@ -32,6 +32,10 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 		ptrTemp = sOptions;
 		sOptions=struct;
 		sOptions.handleFig = ptrTemp;
+	elseif ~isstruct(sOptions) && numel(sOptions) == 2
+		vecWindow = sOptions;
+		sOptions=struct;
+		sOptions.vecWindow = vecWindow;
 	end
 	if isfield(sOptions,'vecColor'), vecColor = sOptions.vecColor; else, vecColor=[0 0 1]; end
 	if isfield(sOptions,'handleFig'), handleFig = sOptions.handleFig;else, handleFig = [];end

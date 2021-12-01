@@ -70,7 +70,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%get dblJitterSize
 	if ~exist('dblJitterSize','var') || isempty(dblJitterSize)
-		dblJitterSize = 1;
+		dblJitterSize = 2; %original:1
 	end
 	
 	%get boolUseSuperResolution
@@ -83,7 +83,6 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	
 	%% build onset/offset vectors
 	vecEventStarts = matEventTimes(:,1);
-	vecEventStops = matEventTimes(:,2);
 	
 	%% gettacezeta
 	if boolUseSuperResolution == 0
@@ -98,11 +97,12 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 	dblD = vecRealDiff(intZETALoc);
 	
 	%% calculate mean-rate difference
+	intMaxRep = size(vecEventStarts,1);
+	vecStimAct = zeros(intMaxRep,1);
+	vecBaseAct = zeros(intMaxRep,1);
 	if boolStopSupplied
 		%pre-allocate
-		intMaxRep = size(vecEventStarts,1);
-		vecStimAct = zeros(intMaxRep,1);
-		vecBaseAct = zeros(intMaxRep,1);
+		vecEventStops = matEventTimes(:,2);
 		dblMedianBaseDur = median(vecEventStarts(2:end) - vecEventStops(1:(end-1)));
 		intTimeNum = numel(vecTraceT);
 		
@@ -152,7 +152,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
  			subplot(2,3,1)
 			imagesc(vecRefT2,1:size(matTracePerTrial,1),matTracePerTrial);
 			colormap(hot);
-			xlabel('Time from event (s)');
+			xlabel('Time after event (s)');
 			ylabel('Trial #');
 			title('Z-scored activation');
 			fixfig;
@@ -168,7 +168,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		errorbar(vecWindowBinCenters,vecMean,vecSEM);
 		%ylim([0 max(get(gca,'ylim'))]);
 		title(sprintf('Mean value over trials'));
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Trace value');
 		fixfig
 		
@@ -178,7 +178,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		plot(vecRefT,vecRealFracLinear,'color',[0.5 0.5 0.5]);
 		hold off
 		title(sprintf('Real data'));
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Fractional position of value in trial');
 		fixfig
 		
@@ -190,7 +190,7 @@ function [dblZetaP,sZETA] = getTraceZeta(vecTraceT,vecTraceAct,matEventTimes,dbl
 		end
 		plot(vecRefT,vecRealDiff,'Color',lines(1));
 		hold off
-		xlabel('Time from event (s)');
+		xlabel('Time after event (s)');
 		ylabel('Offset of data from linear (s)');
 		if boolStopSupplied
 			title(sprintf('ZETA=%.3f (p=%.3f), d(mean)=%.3f (p=%.3f)',dblZETA,dblZetaP,dblMeanD,dblMeanP));
