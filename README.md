@@ -1,7 +1,7 @@
 # ZETA
 Repository containing ZETA functions and dependencies. For an example of how to use the code, check runExampleZETA.m in the /example/ subfolder. Your output should look like the .tif in the same directory.
 
-Note on updates and maintenance: we are currently working on a version of ZETA for calcium imaging trace-based dF/F0 data, so you might notice we are regularly updating the repository. getTraceZeta.m is still undergoing testing and regular changes, so we make no claims regarding its performance. getZeta.m, however, is stable and well tested, so you can safely use it. We update getZeta.m only to fix an occasional bug now and then, but the statistics underlying getZeta.m have not changed, and will not change.
+Note on updates and maintenance: this repository will stay as it is for backward compatibility. We have, however, been working on a version of ZETA for calcium imaging time-series dF/F0 data, and also made some minor changes (including syntax) to the zeta-test. We update the (now legacy) getZeta.m only to fix an occasional programming bug now and then, but getZeta.m and will not change otherwise. If you don't want to be bothered with updates and are happy with getZeta, you can stick with this repository. If you wish to have potentially slightly better performance on the ZETA-test, or would like to try out the time-series ZETA, you can switch to this repository: https://github.com/JorritMontijn/zetatest
 
 The article describing ZETA has been published in eLife: https://elifesciences.org/articles/71969
  
