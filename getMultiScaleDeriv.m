@@ -1,6 +1,6 @@
-function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur)
+function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
 	%getMultiScaleDeriv Returns multi-scale derivative. Syntax:
-	%   [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur)
+	%   [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
 	%Required input:
 	%	- vecT [N x 1]: timestamps (e.g., spike times)
 	%	- vecV [N x 1]: values (e.g., z-scores)
@@ -9,9 +9,11 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 0]
 	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
 	%	- dblBase: base for exponential scale step size [default: 1.5]
-	%	- intPlot: integer, plotting switch (0=none, 1=plot rates, 2=subplot 5&6 of [2 3]) [default: 0]
+	%	- intPlot: integer, plotting switch (0=none, 1=plot rates, 2=subplot 5&6 of [2 3]) [default: 0]. 
+	%						If set to 1, it will plot into the current axes if empty, or create a new figure if ~isempty(get(gca,'Children'))
 	%	- dblMeanRate: mean spiking rate to normalize vecRate (optional)
 	%	- dblUseMaxDur: trial duration to normalize vecRate (optional)
+	%	- boolUseParallel: use parallel processing (optional) [default: 0; often decreases performance, so be cautious!]
 	%
 	%Outputs:
 	%	- vecRate; Instantaneous spiking rate
@@ -28,6 +30,8 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	%	Created by Jorrit Montijn - split from previous getMultiScaleDeriv.
 	%1.1 - February 26 2020
 	%	Added instantaneous spiking rate rescaling [by JM]
+	%1.1.1 - January 10 2022
+	%	Changed plotting behavior to create new figure when intPlot==1 if gca is not empty [by JM]
 	
 	%% set default values
 	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)
@@ -51,6 +55,9 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	if ~exist('dblUseMaxDur','var') || isempty(dblUseMaxDur)
 		dblUseMaxDur = range(vecT);
 	end
+	if ~exist('boolUseParallel','var') || isempty(boolUseParallel)
+		boolUseParallel = false;
+	end
 	
 	%% reorder just in case
 	[vecT,vecReorder] = sort(vecT(:),'ascend');
@@ -66,7 +73,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	vecScale=dblBase.^vecExp;
 	intScaleNum = numel(vecScale);
 	matMSD = zeros(intN,intScaleNum);
-	try %try parallel
+	if boolUseParallel
 		parfor intScaleIdx=1:intScaleNum
 			dblScale = vecScale(intScaleIdx);
 			
@@ -76,7 +83,7 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 				matMSD(intS,intScaleIdx) = getD(dblScale,intS,intN,vecT,vecV);
 			end
 		end
-	catch %otherwise try normal loop
+	else
 		for intScaleIdx=1:intScaleNum
 			dblScale = vecScale(intScaleIdx);
 			
@@ -115,6 +122,9 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		
 	%% plot
 	if intPlot == 1
+		if ~isempty(get(gca,'Children'))
+			figure;
+		end
 		stairs(vecT,vecRate)
 		xlabel('Time after event (s)');
 		ylabel(strLabelY);

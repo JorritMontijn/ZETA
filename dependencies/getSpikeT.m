@@ -22,6 +22,6 @@ function vecSpikeT = getSpikeT(vecSpikeTimes,vecEventStarts,dblUseMaxDur)
 	vecSpikeT(intIdx:end) = [];
 	
 	%get spikes in fold
-	vecSpikeT = [0;sort(vecSpikeT,'ascend');dblUseMaxDur];
+	vecSpikeT = [0;sort(vecSpikeT(:),'ascend');dblUseMaxDur];
 end
 
