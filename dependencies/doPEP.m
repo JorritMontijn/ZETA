@@ -1,6 +1,6 @@
 function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)
 	%doPEP Performs Peri-Event Plot of supplied trace
-	%syntax: [vecMean,vecSEM,vecWindowBinCenters] = doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)
+	%syntax: [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)
 	%	input:
 	%	- vecTimestamps; timestamps of data in vecTrace (for spikes: spike times)
 	%	- vecTraceOrWindow; trace containing data to be plotted (for spikes: binning edges for window)

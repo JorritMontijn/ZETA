@@ -8,9 +8,9 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 	%								[default: median of trial start to trial start]
 	%
 	%Optional inputs:
-	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of bins) [default: 3]
-	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
-	%	- dblBase: critical value for locally dynamic derivative [default: 4]
+	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of bins) [default: 5]
+	%	- dblMinScale: minimum derivative scale in log-seconds [default: round(log(1/1000) / log(dblBase))]
+	%	- dblBase: critical value for locally dynamic derivative [default: 1.5]
 	%	- intPlot: integer, plotting switch (0=none, 1=plot)
 	%
 	%Outputs:
@@ -22,6 +22,8 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 	%		- vecDiff;
 	%		- vecScale; 
 	%
+	%v1.4 - 16 February 2023
+	
 	%Version history:
 	%1.0 - 24 January 2019
 	%	Created by Jorrit Montijn - split from getMultiScaleDeriv.m
@@ -31,6 +33,8 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 	%	Conform to ZETA naming [by JM]
 	%1.3 - 14 October 2021
 	%	Fixed bug [by JM]
+	%1.4 - 16 February 2023
+	%	Fix: updated function description to real default values [by JM]
 	
 	%% set default values
 	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)

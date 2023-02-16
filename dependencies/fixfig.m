@@ -24,9 +24,11 @@ function fixfig(handle,boolMakeActive,dblLineWidth)
 		axes(handle);
 	end
 	
+	%remove box
+	set(handle, 'box','off');
+	drawnow;
 	dblFontSize=14; %change the figure font size
 	try 
-		grid(handle,'on'); %show grid
 		xlabel(get(get(handle,'xlabel'), 'String'),'FontSize',dblFontSize); %set x-label and change font size
 		ylabel(get(get(handle,'ylabel'), 'String'),'FontSize',dblFontSize);%set y-label and change font size
 	catch
