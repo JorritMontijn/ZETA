@@ -1,6 +1,6 @@
-function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
+function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolUseParallel)
 	%getIFR Returns instaneous firing rate. Syntax:
-	%   [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot)
+	%   [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxDur,intSmoothSd,dblMinScale,dblBase,intPlot,boolUseParallel)
 	%Required input:
 	%	- vecSpikeTimes [S x 1]: spike times (s)
 	%	- vecEventStarts [T x 1]: event on times (s), or [T x 2] including event off times
@@ -52,6 +52,14 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 	if ~exist('intPlot','var') || isempty(intPlot)
 		intPlot = 1;
 	end
+	if ~exist('boolUseParallel','var') || isempty(boolUseParallel)
+		objPool = gcp('nocreate');
+		if isempty(objPool) || ~isprop(objPool,'NumWorkers') || objPool.NumWorkers < 4
+			boolUseParallel = false;
+		else
+			boolUseParallel = true;
+		end
+	end
 	if size(vecEventStarts,2) > 2
 		vecEventStarts = vecEventStarts';
 	end
@@ -70,7 +78,7 @@ function [vecTime,vecRate,sIFR] = getIFR(vecSpikeTimes,vecEventStarts,dblUseMaxD
 	%% get multi-scale derivative
 	intMaxRep = size(vecEventStarts,1);
 	dblMeanRate = (intSpikes/(dblUseMaxDur*intMaxRep));
-	[vecRate,sMSD] = getMultiScaleDeriv(vecTime,vecRealDiff,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur);
+	[vecRate,sMSD] = getMultiScaleDeriv(vecTime,vecRealDiff,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel);
 	
 	%% build output
 	if nargout > 1

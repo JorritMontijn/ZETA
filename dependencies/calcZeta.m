@@ -41,10 +41,17 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	intSpikes = numel(vecRealDiff);
 	matRandDiff = nan(intSpikes,intResampNum);
 	vecStartOnly = vecEventStarts(:,1);
+	intTrials = numel(vecStartOnly);
+	%vecJitterPerTrial = dblJitterSize*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2); %original zeta
+	vecJitterPerTrial = dblJitterSize*linspace(-dblUseMaxDur,dblUseMaxDur,intTrials)'; %new
+	matJitterPerTrial = nan(intTrials,intResampNum);
+	for intResampling=1:intResampNum
+		matJitterPerTrial(:,intResampling) = vecJitterPerTrial(randperm(numel(vecJitterPerTrial)));
+	end
 	try
 		parfor intResampling=1:intResampNum
 			%% get random subsample
-			vecStimUseOnTime = vecStartOnly + dblJitterSize*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
+			vecStimUseOnTime = vecStartOnly + matJitterPerTrial(:,intResampling);
 			
 			%get temp offset
 			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);
@@ -55,7 +62,7 @@ function [vecSpikeT,vecRealDiff,vecRealFrac,vecRealFracLinear,matRandDiff,dblZet
 	catch
 		for intResampling=1:intResampNum
 			%% get random subsample
-			vecStimUseOnTime = vecStartOnly + 2*dblUseMaxDur*((rand(size(vecStartOnly))-0.5)*2);
+			vecStimUseOnTime = vecStartOnly + matJitterPerTrial(:,intResampling);
 			
 			%get temp offset
 			vecRandDiff = getTempOffset(vecSpikeT,vecSpikeTimes,vecStimUseOnTime,dblUseMaxDur);

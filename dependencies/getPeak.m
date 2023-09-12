@@ -22,10 +22,10 @@ function [dblPeakValue,dblPeakTime,dblPeakWidth,vecPeakStartStop,intPeakLoc,vecP
 	%	Created by Jorrit Montijn
 	
 	%check inputs
-	if ~exist('vecT','var')
+	if ~exist('vecT','var') || isempty(vecT)
 		vecT = 1:numel(vecData);
 	end
-	if ~exist('vecRestrictRange','var')
+	if ~exist('vecRestrictRange','var') || isempty(vecT)
 		vecRestrictRange = [-inf inf];
 	end
 	if ~exist('intSwitchZ','var') || isempty(intSwitchZ)

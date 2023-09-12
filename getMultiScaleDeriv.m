@@ -1,19 +1,19 @@
-function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
+function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,dblSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
 	%getMultiScaleDeriv Returns multi-scale derivative. Syntax:
-	%   [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
+	%   [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,dblSmoothSd,dblMinScale,dblBase,intPlot,dblMeanRate,dblUseMaxDur,boolUseParallel)
 	%Required input:
 	%	- vecT [N x 1]: timestamps (e.g., spike times)
 	%	- vecV [N x 1]: values (e.g., z-scores)
 	%
 	%Optional inputs:
-	%	- intSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 0]
+	%	- dblSmoothSd: Gaussian SD of smoothing kernel (in # of samples) [default: 2]
 	%	- dblMinScale: minimum derivative scale in seconds [default: 1/1000]
 	%	- dblBase: base for exponential scale step size [default: 1.5]
-	%	- intPlot: integer, plotting switch (0=none, 1=plot rates, 2=subplot 5&6 of [2 3]) [default: 0]. 
+	%	- intPlot: integer, plotting switch (0=none, 1=plot rates, 2=subplot 5&6 of [2 3]) [default: 0].
 	%						If set to 1, it will plot into the current axes if empty, or create a new figure if ~isempty(get(gca,'Children'))
 	%	- dblMeanRate: mean spiking rate to normalize vecRate (optional)
 	%	- dblUseMaxDur: trial duration to normalize vecRate (optional)
-	%	- boolUseParallel: use parallel processing (optional) [default: 0; often decreases performance, so be cautious!]
+	%	- boolUseParallel: use parallel processing (optional) [default: true if pool is active, otherwise false; can decrease performance, so be cautious!]
 	%
 	%Outputs:
 	%	- vecRate; Instantaneous spiking rate
@@ -32,10 +32,25 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 	%	Added instantaneous spiking rate rescaling [by JM]
 	%1.1.1 - January 10 2022
 	%	Changed plotting behavior to create new figure when intPlot==1 if gca is not empty [by JM]
-	
+	%1.1.2 - May 17 2023
+	%	Compiled calcMSD() as mex-file & modified parfor to increase computation speed [by JM]
+	%1.1.3 - May 26 2023
+	%	Changed default parallel-processing behaviour & compiled calcSingleMSD() as mex-file.
+	%	GPU computation is now within try-catch block, so CPU-only pipeline works as well [by JM]
+	%1.1.4 - May 30 2023
+	%	Removed artificial points at t=0 and t=dblUseMaxDur [by JM]
+	%1.2 - June 6 2023
+	%	Fixed small temporal asymmetry of MSD calculation [by JM]
+	%1.2.1 - July 24 2023
+	%	Fixed crash if mex-file is unusable (i.e., non-windows systems) and parallel processing is
+	%	requested [by JM] 
+    %1.2.2 - August 22 2023
+	%	Changed max scale from B log(max(vecT)/10) to B log(range(vecT)/10); shouldn't have an
+    %	effect in most cases, as min(vecT) is always 0 unless this function is used directly [by JM] 
+
 	%% set default values
-	if ~exist('intSmoothSd','var') || isempty(intSmoothSd)
-		intSmoothSd = 0;
+	if ~exist('dblSmoothSd','var') || isempty(dblSmoothSd)
+		dblSmoothSd = 2;
 	end
 	if ~exist('dblBase','var') || isempty(dblBase)
 		dblBase = 1.5;
@@ -56,55 +71,75 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		dblUseMaxDur = range(vecT);
 	end
 	if ~exist('boolUseParallel','var') || isempty(boolUseParallel)
-		boolUseParallel = false;
+		objPool = gcp('nocreate');
+		if isempty(objPool) || ~isprop(objPool,'NumWorkers') || objPool.NumWorkers < 4
+			boolUseParallel = false;
+		else
+			boolUseParallel = true;
+		end
 	end
-	
+
 	%% reorder just in case
 	[vecT,vecReorder] = sort(vecT(:),'ascend');
 	vecV = vecV(vecReorder);
 	vecV = vecV(:);
-	
-	%% prepare data
-	dblMaxScale = log(max(vecT)/10) / log(dblBase);
-	intN = numel(vecT);
-	
+	indRem = vecT==0 | vecT==dblUseMaxDur;%points at 0 and 1 are artificial
+	vecT(indRem) = [];
+	vecV(indRem) = [];
+
 	%% get multi-scale derivative
+	dblMaxScale = log(range(vecT)/10) / log(dblBase);
 	vecExp = dblMinScale:dblMaxScale;
 	vecScale=dblBase.^vecExp;
 	intScaleNum = numel(vecScale);
+	intN = numel(vecT);
 	matMSD = zeros(intN,intScaleNum);
 	if boolUseParallel
-		parfor intScaleIdx=1:intScaleNum
-			dblScale = vecScale(intScaleIdx);
-			
-			%run through all points
-			for intS=1:intN
-				%select points within window
-				matMSD(intS,intScaleIdx) = getD(dblScale,intS,intN,vecT,vecV);
+		try
+			parfor intScaleIdx=1:intScaleNum
+				dblScale = vecScale(intScaleIdx);
+				%run through all points
+				matMSD(:,intScaleIdx) = calcSingleMSD_mex(dblScale,vecT,vecV);
+			end
+		catch
+			parfor intScaleIdx=1:intScaleNum
+				dblScale = vecScale(intScaleIdx);
+				%run through all points
+				matMSD(:,intScaleIdx) = calcSingleMSD(dblScale,vecT,vecV);
 			end
 		end
 	else
-		for intScaleIdx=1:intScaleNum
-			dblScale = vecScale(intScaleIdx);
-			
-			%run through all points
-			for intS=1:intN
-				%select points within window
-				matMSD(intS,intScaleIdx) = getD(dblScale,intS,intN,vecT,vecV);
+		try
+			for intScaleIdx=1:intScaleNum
+				dblScale = vecScale(intScaleIdx);
+				%run through all points
+				matMSD(:,intScaleIdx) = calcSingleMSD_mex(dblScale,vecT,vecV);
+			end
+		catch
+			for intScaleIdx=1:intScaleNum
+				dblScale = vecScale(intScaleIdx);
+				%run through all points
+				matMSD(:,intScaleIdx) = calcSingleMSD(dblScale,vecT,vecV);
 			end
 		end
 	end
-	
+
+
+
 	%% smoothing
-	if intSmoothSd > 0
-		vecFilt = normpdf(-2*(intSmoothSd):2*intSmoothSd,0,intSmoothSd)';
+	if dblSmoothSd > 0
+		vecFilt = normpdf(-2*ceil(dblSmoothSd):2*ceil(dblSmoothSd),0,dblSmoothSd)';
 		vecFilt = vecFilt./sum(vecFilt);
 		%pad array
 		matMSD = padarray(matMSD,floor(size(vecFilt)/2),'replicate');
-		
+
 		%filter
-		matMSD = conv2(matMSD,vecFilt,'valid');
-		
+		try
+			matMSD = conv2(gpuArray(matMSD),gpuArray(vecFilt),'valid');
+		catch
+			matMSD = conv2(matMSD,vecFilt,'valid');
+		end
+
 		%title
 		strTitle = 'Smoothed MSDs';
 	else
@@ -112,26 +147,28 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		strTitle = 'MSDs';
 	end
 	%mean
-	vecM = mean(matMSD,2);
-	
+	vecM = mean(gather(matMSD),2);
+
 	%weighted average of vecM by inter-spike intervals
 	dblMeanM = (1/dblUseMaxDur)*sum(((vecM(1:(end-1)) + vecM(2:end))/2).*diff(vecT));
-	
+
 	%rescale to real firing rates
 	vecRate = dblMeanRate * ((vecM + 1/dblUseMaxDur)/(dblMeanM + 1/dblUseMaxDur));
-		
+
 	%% plot
+    vecHandles = [];
 	if intPlot == 1
 		if ~isempty(get(gca,'Children'))
 			figure;
-		end
+        end
+        vecHandles(1) = gca;
 		stairs(vecT,vecRate)
 		xlabel('Time after event (s)');
 		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));
 		fixfig
 	elseif intPlot > 1
-		subplot(2,3,5);
+		vecHandles(1) = subplot(2,3,5);
 		imagesc(matMSD');
 		set(gca,'ytick',[]);
 		ylabel(sprintf('Scale (s) (%.1es - %.1es)',vecScale(1),vecScale(end)));
@@ -139,20 +176,20 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		title(strTitle);
 		fixfig
 		grid off
-		
-		subplot(2,3,6);
+
+		vecHandles(2) = subplot(2,3,6);
 		if numel(vecT) > 10000
 			vecSubset = round(linspace(1,numel(vecT),10000));
 			plot(vecT(vecSubset),vecRate(vecSubset));
 		else
-			stairs(vecT,vecRate);
+			plot(vecT,vecRate);
 		end
 		xlabel('Time after event (s)');
 		ylabel(strLabelY);
 		title(sprintf('Peri Event Plot (PEP)'));
 		fixfig
 	end
-	
+
 	%% build output
 	if nargout > 1
 		sMSD = struct;
@@ -162,18 +199,45 @@ function [vecRate,sMSD] = getMultiScaleDeriv(vecT,vecV,intSmoothSd,dblMinScale,d
 		sMSD.vecScale = vecScale;
 		sMSD.matMSD = matMSD;
 		sMSD.vecV = vecV;
+        sMSD.vecHandles = vecHandles;
 	end
 end
-function dblD = getD(dblScale,intS,intN,vecT,vecV)
-	%select points within window
-	dblT = vecT(intS);
-	dblMinEdge = dblT - dblScale/2;
-	dblMaxEdge = dblT + dblScale/2;
-	intIdxMinT = find(vecT > dblMinEdge,1);
-	if isempty(intIdxMinT),intIdxMinT=1;end
-	intIdxMaxT = find(vecT > dblMaxEdge,1);
-	if isempty(intIdxMaxT),intIdxMaxT=intN;end
-	if intIdxMinT == intIdxMaxT && intIdxMinT > 1,intIdxMinT=intIdxMaxT-1;end
-	dbl_dT = max([dblScale (vecT(intIdxMaxT) - vecT(intIdxMinT))]);
-	dblD = (vecV(intIdxMaxT) - vecV(intIdxMinT))/dbl_dT;
+function vecMSD = calcSingleMSD(dblScale,vecT,vecV)
+	intN = numel(vecT);
+	vecMSD = zeros(intN,1);
+
+	%run through all points
+	for intS=1:intN
+		%select points within window
+		dblT = vecT(intS);
+		dblMinEdge = dblT - dblScale/2;
+		dblMaxEdge = dblT + dblScale/2;
+		indCompMin = vecT > dblMinEdge;
+		intIdxMinT = find(indCompMin,1,'first');
+		if isempty(intIdxMinT)
+			intIdxMinT=1;
+		else
+			intIdxMinT = intIdxMinT(1);
+		end
+		indCompMax = vecT > dblMaxEdge;
+		intIdxMaxT = find(indCompMax,1,'first');
+		if isempty(intIdxMaxT)
+			intIdxMaxT=intN;
+		else
+			intIdxMaxT = intIdxMaxT(1)-1;
+		end
+		if (intIdxMinT > intIdxMaxT)
+			dblD=0;
+		else
+			if (intIdxMinT == intIdxMaxT) && (intIdxMinT > 1) && (intIdxMinT < intN)
+				intIdxMaxT=intIdxMinT+1;
+				intIdxMinT=intIdxMinT-1;
+			end
+			dbl_dT = max([dblScale (vecT(intIdxMaxT) - vecT(intIdxMinT))]);
+			dblD = (vecV(intIdxMaxT) - vecV(intIdxMinT))/dbl_dT;
+		end
+
+		%select points within window
+		vecMSD(intS) = dblD;
+	end
 end

@@ -44,6 +44,6 @@ function plotRaster(vecSpikes,vecTrialStarts,dblTrialDur,intPlotMaxSpikes)
 	xlim([0 dblTrialDur]);
 	xlabel('Time after trial start (s)');
 	ylabel('Trial #');
-	fixfig;
+	fixfig(gca);
 end
 

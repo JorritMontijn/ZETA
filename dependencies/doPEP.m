@@ -2,7 +2,7 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 	%doPEP Performs Peri-Event Plot of supplied trace
 	%syntax: [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTraceOrWindow,vecEvents,sOptions)
 	%	input:
-	%	- vecTimestamps; timestamps of data in vecTrace (for spikes: spike times)
+	%	- vecTimestamps; timestamps of data in vecTrace (for spikes: spike times/cell array of spike times)
 	%	- vecTraceOrWindow; trace containing data to be plotted (for spikes: binning edges for window)
 	%	- vecEvents; vector containing events to plot around
 	%	- sOptions, structure containing the following fields: (or an axes handle)
@@ -24,6 +24,8 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 	%2.1 - Feb 8 2019
 	%	Added support for time-stamp based input (e.g., spike times) and
 	%	updated syntax and help somewhat [by JM]
+	%2.2 - May 17 2023
+	%	Added support for cell array of spike times [by JM]
 	
 	
 	%% get inputs
@@ -39,11 +41,11 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 	end
 	if isfield(sOptions,'vecColor'), vecColor = sOptions.vecColor; else, vecColor=[0 0 1]; end
 	if isfield(sOptions,'handleFig'), handleFig = sOptions.handleFig;else, handleFig = [];end
-	
+	if iscell(vecTimestamps) || nargout > 3,handleFig = -1;end %disable plotting if requesting multiple cells
 	
 	%% plot peri-event trace
 	%% input is wrong?
-	if numel(vecTraceOrWindow) < numel(vecTimestamps)
+	if iscell(vecTimestamps) || numel(vecTraceOrWindow) < numel(vecTimestamps)
 		intType = 1;
 	elseif numel(vecTraceOrWindow) == numel(vecTimestamps)
 		intType = 2;
@@ -64,17 +66,30 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 		%get event times
 		intEvents = numel(vecEvents);
 		
-		%go through event loop
-		matPET = nan(intEvents,intWindowSize);
-		for intEvent=1:intEvents
-			%retrieve target entries
-			vecTheseEdges = vecTraceOrWindow + vecEvents(intEvent);
-			[vecCounts,edges] = histcounts(vecTimestamps,vecTheseEdges);
-			matPET(intEvent,:) = vecCounts./vecBinDur;
+		%get # of cells
+		if ~iscell(vecTimestamps)
+			cellTimestamps = {vecTimestamps};
+		else
+			cellTimestamps = vecTimestamps;
 		end
 		
+		%go through event loop
+		matPET = nan(intEvents,intWindowSize,numel(cellTimestamps));
+		for intCell=1:numel(cellTimestamps)
+			vecCellTimestamps = cellTimestamps{intCell};
+			for intEvent=1:intEvents
+				%retrieve target entries
+				vecTheseEdges = vecTraceOrWindow + vecEvents(intEvent);
+				[vecCounts,edges] = histcounts(vecCellTimestamps,vecTheseEdges);
+				matPET(intEvent,:,intCell) = vecCounts./vecBinDur;
+			end
+		end
 	elseif intType == 2
 		%% input is trace
+		if std(diff(vecTimestamps))/mean(abs(diff(vecTimestamps))) > 1e-6
+			warning([mfilename ':VariableFramerate'],'Variable framerate can lead to unusual behaviour! Please be cautious and double-check this is what you want')
+		end
+		
 		%get window
 		if isfield(sOptions,'vecWindow'), vecWindow = sOptions.vecWindow;else, vecWindow = [-1 3];end
 		%get event times
@@ -118,8 +133,8 @@ function [vecMean,vecSEM,vecWindowBinCenters,matPET] = doPEP(vecTimestamps,vecTr
 		end
 	end
 	%% get mean + sem
-	vecMean = nanmean(matPET,1);
-	vecSEM = nanstd(matPET,[],1)/sqrt(intEvents);
+	vecMean = squeeze(nanmean(matPET,1));
+	vecSEM = squeeze(nanstd(matPET,[],1)/sqrt(intEvents));
 	
 	%% plot
 	if isempty(handleFig)
