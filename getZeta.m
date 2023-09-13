@@ -307,49 +307,57 @@ function [dblZetaP,vecLatencies,sZETA,sRate] = getZeta(vecSpikeTimes,matEventTim
 		sRate.intPeakLoc = intPeakLoc;
 		sRate.vecPeakStartStopIdx = vecPeakStartStopIdx;
 		
+		intZetaIdxRate = min(max(1,intZETALoc-1),numel(vecRate));
+        intZetaIdxInvRate = min(max(1,intPeakLocInvSign-1),numel(vecRate));
 		
 		if ~isnan(dblPeakTime)
 			%assign array data
 			if intLatencyPeaks > 3
 				%get onset
-				[dblOnset,dblOnsetVal] = getOnset(vecRate,vecSpikeT,dblPeakTime,vecRestrictRange);
+				[dblOnset,dblOnsetVal] = getOnset(vecRate,sRate.vecT,dblPeakTime,vecRestrictRange);
 				sRate.dblOnset = dblOnset;
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime dblOnset];
-				vecLatencyVals = [vecRate(intZETALoc) vecRate(intPeakLocInvSign) vecRate(intPeakLoc) dblOnsetVal];
+				vecLatencyVals = [vecRate(intZetaIdxRate) vecRate(intZetaIdxInvRate) vecRate(intPeakLoc) dblOnsetVal];
 			else
 				sRate.dblOnset = [nan];
 				vecLatencies = [dblMaxDTime dblMaxDTimeInvSign dblPeakTime];
-				vecLatencyVals = [vecRate(intZETALoc) vecRate(intPeakLocInvSign) vecRate(intPeakLoc)];
+				vecLatencyVals = [vecRate(intZetaIdxRate) vecRate(intZetaIdxInvRate) vecRate(intPeakLoc)];
 			end
 			intLatencyPeaks = min([intLatencyPeaks numel(vecLatencies)]);
 			vecLatencies = vecLatencies(1:intLatencyPeaks);
 			vecLatencyVals = vecLatencyVals(1:intLatencyPeaks);
 			if intPlot > 0
 				hold on
-				scatter(dblPeakTime,vecRate(intPeakLoc),'gx');
-				scatter(dblMaxDTime,vecRate(intZETALoc),'bx');
-				scatter(dblMaxDTimeInvSign,vecRate(intPeakLocInvSign),'b*');
 				if intLatencyPeaks > 3
 					scatter(dblOnset,dblOnsetVal,'rx');
 					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms,On=%.2fms',dblMaxDTime*1000,dblMaxDTimeInvSign*1000,dblPeakTime*1000,dblOnset*1000));
 				else
 					title(sprintf('ZETA=%.0fms,-ZETA=%.0fms,Pk=%.0fms',dblMaxDTime*1000,dblMaxDTimeInvSign*1000,dblPeakTime*1000));
 				end
-				hold off
-				fixfig;
-				
-				if intPlot > 3
-					vecHandles = get(gcf,'children');
-					ptrFirstSubplot = vecHandles(find(contains(get(vecHandles,'type'),'axes'),1,'last'));
-					axes(ptrFirstSubplot);
-					vecY = get(gca,'ylim');
-					hold on;
-					if intLatencyPeaks > 3,plot(dblOnset*[1 1],vecY,'r--');end
-					plot(dblPeakTime*[1 1],vecY,'g--');
-					plot(dblMaxDTime*[1 1],vecY,'b--');
-					plot(dblMaxDTimeInvSign*[1 1],vecY,'b-.');
-					hold off
-				end
+
+                if intPlot > 3
+                    if intLatencyPeaks > 2,scatter(vecLatencies(3),vecLatencyVals(3),'gx');end
+                    if intLatencyPeaks > 1,scatter(vecLatencies(2),vecLatencyVals(2),'bx');end
+                    if intLatencyPeaks > 0,scatter(vecLatencies(1),vecLatencyVals(1),'b*');end
+                    hold off
+    				fixfig;
+    				xlim([0 dblUseMaxDur]);
+
+                    vecHandles = get(gcf,'children');
+                    ptrFirstSubplot = vecHandles(find(contains(get(vecHandles,'type'),'axes'),1,'last'));
+                    axes(ptrFirstSubplot);
+                    vecY = get(gca,'ylim');
+                    hold on;
+                    if intLatencyPeaks > 3,plot(dblOnset*[1 1],vecY,'r--');end
+                    plot(dblPeakTime*[1 1],vecY,'g--');
+                    plot(dblMaxDTime*[1 1],vecY,'b--');
+                    plot(dblMaxDTimeInvSign*[1 1],vecY,'b-.');
+                    hold off
+                else
+                    hold off
+    				fixfig;
+    				xlim([0 dblUseMaxDur]);
+                end
 			end
 		else
 			%placeholder peak data
