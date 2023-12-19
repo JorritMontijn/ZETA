@@ -1,4 +1,6 @@
 function fixfig(handle,boolMakeActive,dblLineWidth,dblFontSize)
+	%fixfig Fixes graphical style of figure or axes
+	%fixfig(handle,boolMakeActive,dblLineWidth,dblFontSize)
 	
 	%flush
 	drawnow;

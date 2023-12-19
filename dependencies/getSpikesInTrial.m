@@ -1,11 +1,12 @@
-function [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblMaxDur)
+function [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblMaxDur,boolReturnCells)
 	%getSpikesInTrial Retrieves spiking times per trial
-	%syntax: [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblMaxDur)
+	%syntax: [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTrialStarts,dblMaxDur,boolReturnCells)
 	%	input:
 	%	- vecSpikes; spike times (s)
 	%	- vecTrialStarts: trial start times (s)
 	%	- dblTrialDur: (optional) if supplied, uses trial duration for
 	%			computations instead of assigning spikes directly to trials
+	%	- boolReturnCells: (optional, default=false) if true, returns cell arrays for a single neuron 
 	%
 	%Version history:
 	%1.0 - June 26 2019
@@ -18,6 +19,9 @@ function [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTria
 	%check inputs
 	if nargin < 3
 		dblMaxDur = [];
+	end
+	if ~exist('boolReturnCells','var') || isempty(boolReturnCells)
+		boolReturnCells = false;
 	end
 	
 	if iscell(vecSpikes)
@@ -43,8 +47,13 @@ function [vecTrialPerSpike,vecTimePerSpike] = getSpikesInTrial(vecSpikes,vecTria
 				cellTimePerSpike{intTrial} = vecTheseSpikes;
 			end
 			%transform to vectors & reorder
-			vecTimePerSpike = cell2vec(cellTimePerSpike);
-			vecTrialPerSpike = cell2vec(cellTrialPerSpike);
+			if boolReturnCells
+				vecTimePerSpike = cellTimePerSpike;
+				vecTrialPerSpike = cellTrialPerSpike;
+			else
+				vecTimePerSpike = cell2vec(cellTimePerSpike);
+				vecTrialPerSpike = cell2vec(cellTrialPerSpike);
+			end
 		else
 			%sort spikes
 			vecTrialPerSpike = nan(size(vecSpikes));
