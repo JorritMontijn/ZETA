@@ -7,12 +7,16 @@ function vecOut = cell2vec(cellIn)
 		return;
 	end
 	
-    try
-        intElements = sum(cellfun(@numel,cellIn),'all');
-    catch
-        intElements = sum(cellfun(@numel,cellIn(:)));
-    end
-	vecOut = zeros(intElements,1,'like',cellIn{1});
+	try
+		intElements = sum(cellfun(@numel,cellIn),'all');
+	catch
+		intElements = sum(cellfun(@numel,cellIn(:)));
+	end
+	try
+		vecOut = zeros(intElements,1,'like',cellIn{1});
+	catch
+		vecOut = nan(intElements,1);
+	end
 	intElCounter = 1;
 	for intCell=1:numel(cellIn)
 		vecData = cellIn{intCell}(:);
